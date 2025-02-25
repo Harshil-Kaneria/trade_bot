@@ -46,7 +46,10 @@
             </table>
         </div>
 
-        <h2 class="mt-5 mb-3">Profits</h2>
+        <div class="d-flex justify-content-between align-items-center  mt-5">
+            <h2 class="mb-3">Profits</h2>
+            <strong id="total-profit"></strong>
+        </div>
         <div class="table-responsive">
             <table class="table table-bordered table-striped">
                 <thead class="table-dark">
@@ -95,6 +98,26 @@
         socket.on('buy_event', function(data) {
             document.title = data.data.last_price + ' Bot';
             $("#price").html(data.data.last_price)
+        });
+        
+    </script>
+    <script>
+        $(document).ready(function () {
+            let totalProfit = 0;
+    
+            // Iterate through each row in the profits table
+            $('#profit-table tr').each(function () {
+                // Get the profit value from the second column (index 1)
+                const profitValue = parseFloat($(this).find('td:eq(1)').text());
+    
+                // Add to the total profit if the value is a valid number
+                if (!isNaN(profitValue)) {
+                    totalProfit += profitValue;
+                }
+            });
+    
+            // Display the total profit
+            $('#total-profit').text('Total Profit: ₹' + totalProfit.toFixed(2));
         });
     </script>
 </body>

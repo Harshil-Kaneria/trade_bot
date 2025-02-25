@@ -22,7 +22,7 @@ conn = mysql.connector.connect(
 cursor = conn.cursor()
 
 # Initialize Kite API
-enctoken = "r1Rvg0GwrKMxVJqCBxl8k4hyEdruuVqZS04PSGe/nuyhljLyc3/+/tdFJWlwUoOkIrDMxql7ne36vidfADZaqZkxqbwnevSygVG9vpIbERflSnR4FMdp2w=="
+enctoken = "WyuFDOWBQHm5GIm0VbVXs0cOfTEsjeWGWStpLomSxMFdOLqzHXkfkLN/5kTvtz9FqLTDxV8teF4T6bk8DtKE6X9mvNbAsotl33hCrh26opprWVchlkFRhA=="
 kite = KiteApp(enctoken=enctoken)
 
 # Create tables if they don't exist
@@ -51,20 +51,13 @@ capital = 100000
 invest_amount = 90000
 current_profit = 0
 quantity_data = 0
-book_profit = 250
-reenter_threshold = 150
+book_profit = 2
+reenter_threshold = 1
 last_sell_price = None
 waiting_for_reentry = False
 
 # User input for stock token
-instrument_token = 5097729  # Example token (Change as needed)
-
-# Check trend using RSI and Moving Average
-def is_uptrend(data):
-    close_prices = np.array([x['close'] for x in data])
-    rsi = talib.RSI(close_prices, timeperiod=14)
-    moving_avg = talib.SMA(close_prices, timeperiod=20)
-    return rsi[-1] > 50 and close_prices[-1] > moving_avg[-1]
+instrument_token = 291849
 
 # Simulate buying stocks
 def buy_stock(stock, price, quantity):
