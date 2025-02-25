@@ -59,6 +59,24 @@ waiting_for_reentry = False
 # User input for stock token
 instrument_token = 291849
 
+def check_open_positions():
+    global holding_stock, current_trade_id, buy_price, quantity_data
+
+    cursor.execute('SELECT id, stock_symbol, buy_price, quantity FROM trades WHERE sell_price IS NULL')
+    open_trades = cursor.fetchall()
+
+    if open_trades:
+        for trade in open_trades:
+            trade_id, stock_symbol, buy_price_db, quantity = trade
+            current_trade_id = trade_id
+            buy_price = buy_price_db
+            quantity_data = quantity
+            holding_stock = True
+            print(f"Resuming open position for {stock_symbol}: Bought at ₹{buy_price_db}, Quantity: {quantity}")
+    else:
+        print("No open positions found.")
+
+
 # Simulate buying stocks
 def buy_stock(stock, price, quantity):
     global invest_amount
@@ -171,6 +189,7 @@ def index():
     return render_template('index.html', trades=trades, profits=profits)
 
 if __name__ == '__main__':
+    check_open_positions()
     socketio.run(app, port=5000)
 
 # Close connection on shutdown

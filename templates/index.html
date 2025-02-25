@@ -86,12 +86,18 @@
         const socket = io();
 
         socket.on('trade_event', function(data) {
-            toastr.success(data.message, data.event);
-
+            
             if (data.event === 'Buy' || data.event === 'Sell') {
+                if(data.event === 'Buy'){
+                    toastr.success(data.message, data.event);
+                }else{
+                    toastr.info(data.message, data.event);
+                }
                 setTimeout(()=>{
                     location.reload();
                 },2000)
+            }else{
+                toastr.success(data.message, data.event);
             }
         });
 
