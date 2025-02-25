@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Bot Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Toastr CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Trading Bot Dashboard</h1>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="mb-3">Buy/Sell Trades</h2>
+            <strong id="price"></strong>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Stock Symbol</th>
+                        <th>Buy Price</th>
+                        <th>Sell Price</th>
+                        <th>Quantity</th>
+                        <th>Buy Time</th>
+                        <th>Sell Time</th>
+                    </tr>
+                </thead>
+                <tbody id="trade-table">
+                    {% for trade in trades %}
+                    <tr>
+                        <td>{{ trade[0] }}</td>
+                        <td>{{ trade[1] }}</td>
+                        <td>{{ trade[2] }}</td>
+                        <td>{{ trade[3] }}</td>
+                        <td>{{ trade[4] }}</td>
+                        <td>{{ trade[5] }}</td>
+                        <td>{{ trade[6] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="mt-5 mb-3">Profits</h2>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Profit (₹)</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody id="profit-table">
+                    {% for profit in profits %}
+                    <tr>
+                        <td>{{ profit[0] }}</td>
+                        <td>{{ profit[1] }}</td>
+                        <td>{{ profit[2] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <!-- Socket.io -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- Toastr JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <script>
+        const socket = io();
+
+        socket.on('trade_event', function(data) {
+            toastr.success(data.message, data.event);
+
+            if (data.event === 'Buy' || data.event === 'Sell') {
+                setTimeout(()=>{
+                    location.reload();
+                },2000)
+            }
+        });
+
+        socket.on('buy_event', function(data) {
+            document.title = data.data.last_price + ' Bot';
+            $("#price").html(data.data.last_price)
+        });
+    </script>
+</body>
+</html>
