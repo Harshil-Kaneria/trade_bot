@@ -22,7 +22,7 @@ conn = mysql.connector.connect(
 cursor = conn.cursor()
 
 # Initialize Kite API
-enctoken = "WyuFDOWBQHm5GIm0VbVXs0cOfTEsjeWGWStpLomSxMFdOLqzHXkfkLN/5kTvtz9FqLTDxV8teF4T6bk8DtKE6X9mvNbAsotl33hCrh26opprWVchlkFRhA=="
+enctoken = "57JyY5GV7YH8QkJwrPW8YiizYIaZqdWDEXrX+PkoDYju3CcAzFUk/R9E6ZqwU6gBPtfxcrBm1P2YwgG1zxLwdi6BVqzvEJXkQEJVSLBa4JBPocmyYlKDVg=="
 kite = KiteApp(enctoken=enctoken)
 
 # Create tables if they don't exist
@@ -34,15 +34,8 @@ cursor.execute('''
         sell_price FLOAT,
         quantity INT,
         buy_time DATETIME,
-        sell_time DATETIME
-    )
-''')
-
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS profits (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        profit FLOAT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        sell_time DATETIME,
+        profit FLOAT
     )
 ''')
 
@@ -119,8 +112,7 @@ def sell_stock(stock_id, price):
         current_profit += profit
         invested_amount -= buy_price * quantity
         update_invested_amount(invested_amount)
-        cursor.execute('''UPDATE trades SET sell_price = %s, sell_time = NOW() WHERE id = %s''', (price, stock_id))
-        cursor.execute('''INSERT INTO profits (profit) VALUES (%s)''', (profit,))
+        cursor.execute('''UPDATE trades SET sell_price = %s, sell_time = NOW(), profit = %s WHERE id = %s''', (price, profit, stock_id))
         conn.commit()
         socketio.emit('trade_event', {'event': 'Sell', 'message': f'Sold stock ID {stock_id} for profit of ₹{profit}'})
 
@@ -136,7 +128,7 @@ current_trade_id = None
 def on_ticks(ws, ticks):
     global buy_price, holding_stock, current_profit, current_trade_id, quantity_data, last_sell_price, waiting_for_reentry, invested_amount
     for tick in ticks:
-        socketio.emit('buy_event', {
+        socketio.emit('price_tick', {
             'event': 'tick',
             'data': tick
         })
@@ -197,9 +189,7 @@ def start_trading():
 def index():
     cursor.execute('SELECT * FROM trades')
     trades = cursor.fetchall()
-    cursor.execute('SELECT * FROM profits')
-    profits = cursor.fetchall()
-    return render_template('index.html', trades=trades, profits=profits)
+    return render_template('index.html', trades=trades)
 
 if __name__ == '__main__':
     check_open_positions()
