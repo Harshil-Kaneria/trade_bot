@@ -46,9 +46,23 @@ cursor.execute('''
     )
 ''')
 
-# Portfolio
-capital = 100000
-invest_amount = 90000
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS portfolio (
+        id INT PRIMARY KEY,
+        capital FLOAT,
+        invested_amount FLOAT
+    )
+''')
+
+# Initialize portfolio if not exists
+cursor.execute('SELECT * FROM portfolio WHERE id = 1')
+if cursor.fetchone() is None:
+    cursor.execute('INSERT INTO portfolio (id, capital, invested_amount) VALUES (1, 100000, 0)')
+    conn.commit()
+
+# Fetch capital and invested amount from DB
+cursor.execute('SELECT capital, invested_amount FROM portfolio WHERE id = 1')
+capital, invested_amount = cursor.fetchone()
 current_profit = 0
 quantity_data = 0
 book_profit = 2
@@ -59,8 +73,12 @@ waiting_for_reentry = False
 # User input for stock token
 instrument_token = 291849
 
+def update_invested_amount(amount):
+    cursor.execute('UPDATE portfolio SET invested_amount = %s WHERE id = 1', (amount,))
+    conn.commit()
+
 def check_open_positions():
-    global holding_stock, current_trade_id, buy_price, quantity_data
+    global holding_stock, current_trade_id, buy_price, quantity_data, invested_amount
 
     cursor.execute('SELECT id, stock_symbol, buy_price, quantity FROM trades WHERE sell_price IS NULL')
     open_trades = cursor.fetchall()
@@ -72,36 +90,35 @@ def check_open_positions():
             buy_price = buy_price_db
             quantity_data = quantity
             holding_stock = True
+            invested_amount += buy_price * quantity  # Update invested amount
             print(f"Resuming open position for {stock_symbol}: Bought at ₹{buy_price_db}, Quantity: {quantity}")
     else:
         print("No open positions found.")
 
-
 # Simulate buying stocks
 def buy_stock(stock, price, quantity):
-    global invest_amount
-    global quantity_data
+    global invested_amount, quantity_data
     cursor.execute('''INSERT INTO trades (stock_symbol, buy_price, quantity, buy_time) VALUES (%s, %s, %s, NOW())''',
                    (stock, price, quantity))
     conn.commit()
     trade_id = cursor.lastrowid
-    invest_amount -= price * quantity
+    invested_amount += price * quantity
+    update_invested_amount(invested_amount)
     quantity_data = quantity
     socketio.emit('trade_event', {'event': 'Buy', 'message': f'Bought {stock} at ₹{price}'})
     return trade_id
 
 # Simulate selling stocks
 def sell_stock(stock_id, price):
-    global current_profit
-    global invest_amount
-    global quantity_data
+    global current_profit, invested_amount, quantity_data
     cursor.execute('SELECT buy_price, quantity FROM trades WHERE id = %s AND sell_price IS NULL', (stock_id,))
     trade = cursor.fetchone()
     if trade:
         buy_price, quantity = trade
         profit = (price - buy_price) * quantity
         current_profit += profit
-        invest_amount = invest_amount+(quantity*price)
+        invested_amount -= buy_price * quantity
+        update_invested_amount(invested_amount)
         cursor.execute('''UPDATE trades SET sell_price = %s, sell_time = NOW() WHERE id = %s''', (price, stock_id))
         cursor.execute('''INSERT INTO profits (profit) VALUES (%s)''', (profit,))
         conn.commit()
@@ -117,10 +134,8 @@ current_trade_id = None
 
 # Handle WebSocket ticks
 def on_ticks(ws, ticks):
-    global buy_price, holding_stock, current_profit, current_trade_id, quantity_data, last_sell_price, waiting_for_reentry
+    global buy_price, holding_stock, current_profit, current_trade_id, quantity_data, last_sell_price, waiting_for_reentry, invested_amount
     for tick in ticks:
-        # print(f"tick {tick}")
-
         socketio.emit('buy_event', {
             'event': 'tick',
             'data': tick
@@ -132,7 +147,7 @@ def on_ticks(ws, ticks):
         print(f"Live Data: {price} for Token: {symbol}")
 
         if not holding_stock and not waiting_for_reentry:
-            quantity = int(invest_amount // price) or 1  # Prevent division by zero
+            quantity = int((capital - invested_amount) // price) or 1  # Prevent division by zero
             current_trade_id = buy_stock(symbol, price, quantity)
             buy_price = price
             holding_stock = True
@@ -150,15 +165,13 @@ def on_ticks(ws, ticks):
                 })
                 ws.close()
 
-        # Wait for price to drop by the threshold before buying again
         elif waiting_for_reentry:
-            if (price*quantity_data) <= ((last_sell_price*quantity_data) - reenter_threshold):
-                quantity = int(invest_amount // price) or 1
+            if (price * quantity_data) <= ((last_sell_price * quantity_data) - reenter_threshold):
+                quantity = int((capital - invested_amount) // price) or 1
                 current_trade_id = buy_stock(symbol, price, quantity)
                 buy_price = price
                 holding_stock = True
                 waiting_for_reentry = False  # Reset waiting flag
-
 
 def on_connect(ws, response):
     print("WebSocket: Connected")
