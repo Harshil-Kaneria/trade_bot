@@ -12,8 +12,10 @@
         <h1 class="text-center mb-4">Trading Bot Dashboard</h1>
         <div class="d-flex justify-content-between align-items-center">
             <h2 class="mb-3">Buy/Sell Trades</h2>
-            <strong id="price"></strong>
+            <strong id="capital">Total capital: ₹{{ capital }}</strong>
+            <strong id="invested-amount">Invested amount: ₹{{ invested_amount }}</strong>
             <strong id="total-profit"></strong>
+            <strong id="price"></strong>
         </div>
         <div class="table-responsive">
             <table class="table table-bordered table-striped">
@@ -57,18 +59,48 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
     <script>
         const socket = io();
+
+        function updateTradeTable(trades) {
+            let totalProfit = 0;
+            let tableBody = $("#profit-table");
+            tableBody.empty();
+
+            trades.forEach(trade => {
+                totalProfit += trade.profit;
+                let row = `
+                    <tr>
+                        <td>${trade.id || 'None'}</td>
+                        <td>${trade.stock_symbol || 'None'}</td>
+                        <td>${trade.buy_price || 'None'}</td>
+                        <td>${trade.sell_price || 'None'}</td>
+                        <td>${trade.quantity || 'None'}</td>
+                        <td>${trade.buy_time || 'None'}</td>
+                        <td>${trade.sell_time || 'None'}</td>
+                        <td>${trade.profit || 'None'}</td>
+                    </tr>
+                `;
+                tableBody.append(row);
+            });
+
+            $("#total-profit").text(`Total Profit: ₹${totalProfit.toFixed(2)}`);
+        }
+
         socket.on('trade_event', function(data) {
+            console.log('data',data);
             if (data.event === 'Buy' || data.event === 'Sell') {
                 if(data.event === 'Buy'){
                     toastr.success(data.message, data.event);
                 }else{
                     toastr.info(data.message, data.event);
                 }
-                setTimeout(()=>{
-                    location.reload();
-                },2000)
             }else{
                 toastr.success(data.message, data.event);
+            }
+
+            if (data?.data?.trades) {
+                updateTradeTable(data.data.trades);
+                $("#capital").text('Total capital: ₹'+data.data.capital)
+                $("#invested-amount").text('Invested amount: ₹'+data.data.invested_amount)
             }
         });
         socket.on('price_tick', function(data) {
