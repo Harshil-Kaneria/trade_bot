@@ -122,7 +122,7 @@
                         <td>${trade.quantity || "None"}</td>
                         <td>${trade.buy_time || "None"}</td>
                         <td>${trade.sell_time || "None"}</td>
-                        <td>${trade.profit || "None"}</td>
+                        <td>${trade.profit==null?"None":trade.profit}</td>
                     </tr>
                 `;
           tableBody.append(row);
