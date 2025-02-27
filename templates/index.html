@@ -16,8 +16,7 @@
   <body class="bg-light">
     <div class="container mt-5">
       <h1 class="text-center mb-4">Trading Bot Dashboard</h1>
-      <div class="d-flex justify-content-between align-items-center">
-        <h2 class="mb-3">Buy/Sell Trades</h2>
+      <div class="d-flex justify-content-between align-items-center mb-3">
         <strong id="capital">Total capital: ₹{{ capital }}</strong>
         <strong id="invested-amount"
           >Invested amount: ₹{{ invested_amount }}</strong
@@ -25,6 +24,21 @@
         <strong id="total-profit"></strong>
         <strong id="price"></strong>
         <strong id="position"></strong>
+
+        <button
+          class="btn btn-outline-success d-none"
+          onclick="userEvent('buy')"
+          id="buy-button"
+        >
+          Buy
+        </button>
+        <button
+          class="btn btn-outline-danger d-none"
+          onclick="userEvent('sell')"
+          id="sell-button"
+        >
+          Sell
+        </button>
       </div>
       <div class="table-responsive">
         <table class="table table-bordered table-striped">
@@ -69,6 +83,29 @@
     <script>
       const socket = io();
 
+      function userEvent(event) {
+          fetch("/api/user-event", {
+              method: "POST",
+              headers: {
+                  "Content-Type": "application/json"
+              },
+              body: JSON.stringify({ event: event })
+          })
+          .then(response => response.json())
+          .then(data => console.log(data.message))
+          .catch(error => console.error("Error:", error));
+      }
+
+      function showButton(){
+        if ($("#profit-table tr:eq(0)").find("td:eq(3)").text() === "None") {
+          $("#sell-button").removeClass("d-none");
+          $("#buy-button").addClass("d-none");
+        } else {
+          $("#buy-button").removeClass("d-none");
+          $("#sell-button").addClass("d-none");
+        }
+      }
+
       function updateTradeTable(trades) {
         let totalProfit = 0;
         let tableBody = $("#profit-table");
@@ -92,10 +129,10 @@
         });
 
         $("#total-profit").text(`Total Profit: ₹${totalProfit.toFixed(2)}`);
+        showButton()
       }
 
       socket.on("trade_event", function (data) {
-        console.log("data", data);
         if (data.event === "Buy" || data.event === "Sell") {
           if (data.event === "Buy") {
             toastr.success(data.message, data.event);
@@ -115,28 +152,32 @@
         }
       });
       socket.on("price_tick", function (data) {
-          
-          if ($("#profit-table tr:eq(0)").find("td:eq(3)").text() === "None") {
-            var cellValue = parseFloat(
-              $("#profit-table tr:eq(0)").find("td:eq(2)").text()
-            );
-            if (cellValue - data.data.last_price > 0) {
-              $("#profit-table tr:eq(0)")
-                .find("td:eq(2)")
-                .removeClass("bg-success")
-                .addClass("bg-danger");
-            } else {
-              $("#profit-table tr:eq(0)")
-                .find("td:eq(2)")
-                .removeClass("bg-danger")
-                .addClass("bg-success");
-            }
+        if ($("#profit-table tr:eq(0)").find("td:eq(3)").text() === "None") {
+          var cellValue = parseFloat(
+            $("#profit-table tr:eq(0)").find("td:eq(2)").text()
+          );
+          if (cellValue - data.data.last_price > 0) {
+            $("#profit-table tr:eq(0)")
+              .find("td:eq(2)")
+              .removeClass("bg-success")
+              .addClass("bg-danger");
+          } else {
+            $("#profit-table tr:eq(0)")
+              .find("td:eq(2)")
+              .removeClass("bg-danger")
+              .addClass("bg-success");
+          }
 
-            $("#position").text("Position: ₹"+((data.data.last_price-cellValue)*parseFloat(
-              $("#profit-table tr:eq(0)").find("td:eq(4)").text()
-            )).toFixed(2))
+          $("#position").text(
+            "Position: ₹" +
+              (
+                (data.data.last_price - cellValue) *
+                parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())
+              ).toFixed(2)
+          );
         }
 
+        showButton()
         document.title = data.data.last_price + " Bot";
         $("#price").text("Price: ₹" + data.data.last_price);
       });

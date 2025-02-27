@@ -4,7 +4,7 @@ import mysql.connector
 from kite_trade import *
 from kiteconnect import KiteTicker
 import numpy as np
-from flask import Flask, render_template
+from flask import Flask, render_template,request, jsonify
 from flask_socketio import SocketIO, emit
 
 # Flask app for displaying trades and profits
@@ -21,7 +21,7 @@ conn = mysql.connector.connect(
 cursor = conn.cursor()
 
 # Initialize Kite API
-enctoken = ""
+enctoken = "TCJP9qJeyMHg5Ncy6AR7oXPQE5PXrzjsc316ryR1slaxbfT5uelAeuIiolF9/6zrFB9nUprdcCvTnEJYe0ianGHe7A5RnMMcfdOuQ85kBB9gWd/gfcZpJA=="
 kite = KiteApp(enctoken=enctoken)
 
 # Create tables if they don't exist
@@ -58,16 +58,18 @@ capital, invested_amount = cursor.fetchone()
 
 current_profit = 0
 quantity_data = 0
-book_profit = 250
-reenter_threshold = 100
+book_profit = 2
+reenter_threshold = 1
 last_sell_price = None
 waiting_for_reentry = False
 holding_stock = False
 current_trade_id = None
 buy_price = None
+user_buy_signal = False
+user_sell_signal = False
 
 # User input for stock token
-instrument_token = 1304833   
+instrument_token = 291849   
 
 def rec_db():
     """ Fetch trade history and capital, return JSON-friendly data """
@@ -136,7 +138,7 @@ def check_open_positions():
 # Simulate buying stocks
 def buy_stock(stock, price, quantity):
     """ Execute a buy order and update database """
-    global invested_amount, quantity_data, capital, holding_stock
+    global invested_amount, quantity_data, capital, holding_stock,waiting_for_reentry,user_buy_signal,user_sell_signal
 
     # Fetch updated capital before buying
     cursor.execute('SELECT capital FROM portfolio WHERE id = 1')
@@ -150,6 +152,8 @@ def buy_stock(stock, price, quantity):
     update_invested_amount(invested_amount)
     quantity_data = quantity
     holding_stock = True
+    user_buy_signal = False
+    user_sell_signal = False
 
     socketio.emit('trade_event', {'event': 'Buy', 'message': f'Bought {stock} at ₹{price}','data':rec_db()})
     return trade_id
@@ -158,7 +162,7 @@ def buy_stock(stock, price, quantity):
 # Simulate selling stocks
 def sell_stock(stock_id, price):
     """ Execute a sell order and update database """
-    global current_profit, invested_amount, capital, holding_stock, last_sell_price, waiting_for_reentry
+    global current_profit, invested_amount, capital, holding_stock, last_sell_price, waiting_for_reentry,user_buy_signal,user_sell_signal
 
     cursor.execute('SELECT buy_price, quantity FROM trades WHERE id = %s AND sell_price IS NULL', (stock_id,))
     trade = cursor.fetchone()
@@ -180,6 +184,8 @@ def sell_stock(stock_id, price):
         holding_stock = False
         last_sell_price = price
         waiting_for_reentry = True
+        user_buy_signal = False
+        user_sell_signal = False
 
         socketio.emit('trade_event', {'event': 'Sell', 'message': f'Sold stock ID {stock_id} for profit of ₹{profit}','data':rec_db()})
 
@@ -191,7 +197,7 @@ kws = KiteTicker(api_key="your_api_key", access_token=enctoken + "&user_id=" + u
 
 def on_ticks(ws, ticks):
     """ Handle live stock price updates """
-    global buy_price, holding_stock, current_trade_id, quantity_data, last_sell_price, waiting_for_reentry, invested_amount
+    global buy_price, holding_stock, current_trade_id, quantity_data, last_sell_price, waiting_for_reentry, invested_amount,user_sell_signal,user_buy_signal
 
     for tick in ticks:
         socketio.emit('price_tick', {'event': 'tick', 'data': tick})
@@ -199,14 +205,13 @@ def on_ticks(ws, ticks):
         symbol = tick['instrument_token']
         print(f"Live Data: {price} for Token: {symbol}")
 
-        if not holding_stock and not waiting_for_reentry:
+        if not holding_stock and (not waiting_for_reentry or user_buy_signal):
             quantity = int((capital - invested_amount) // price) or 1
             current_trade_id = buy_stock(symbol, price, quantity)
             buy_price = price
 
-        elif holding_stock and (price * quantity_data) >= (book_profit + (quantity_data * buy_price)):
+        elif holding_stock and (((price * quantity_data) >= (book_profit + (quantity_data * buy_price))) or user_sell_signal):
             sell_stock(current_trade_id, price)
-            ws.close()
 
         elif waiting_for_reentry and (price * quantity_data) <= ((last_sell_price * quantity_data) - reenter_threshold):
             quantity = int((capital - invested_amount) // price) or 1
@@ -223,6 +228,8 @@ def on_connect(ws, response):
 
 def on_close(ws, code, reason):
     print(f"WebSocket closed with code: {code}, reason: {reason}")
+    time.sleep(5)  # Wait before reconnecting
+    ws.connect(threaded=True)
 
 
 kws.on_ticks = on_ticks
@@ -234,6 +241,23 @@ kws.on_close = on_close
 def start_trading():
     if not kws.is_connected():
         kws.connect(threaded=True)
+
+
+@app.route('/api/user-event', methods=['POST'])
+def handle_user_event():
+    global user_sell_signal, user_buy_signal
+    data = request.get_json()
+    event_type = data.get('event')
+    if event_type == 'sell':
+        user_buy_signal = False
+        user_sell_signal = True
+        print("User sell signal set to True")
+    elif event_type == 'buy':
+        user_sell_signal = False
+        user_buy_signal = True
+        print("User buy signal set to True")
+
+    return jsonify({"message": f"{event_type} event received"}), 200
 
 
 @app.route('/')
