@@ -3,7 +3,6 @@ import datetime
 import mysql.connector
 from kite_trade import *
 from kiteconnect import KiteTicker
-import talib
 import numpy as np
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
@@ -22,7 +21,7 @@ conn = mysql.connector.connect(
 cursor = conn.cursor()
 
 # Initialize Kite API
-enctoken = "57JyY5GV7YH8QkJwrPW8YiizYIaZqdWDEXrX+PkoDYju3CcAzFUk/R9E6ZqwU6gBPtfxcrBm1P2YwgG1zxLwdi6BVqzvEJXkQEJVSLBa4JBPocmyYlKDVg=="
+enctoken = ""
 kite = KiteApp(enctoken=enctoken)
 
 # Create tables if they don't exist
@@ -59,8 +58,8 @@ capital, invested_amount = cursor.fetchone()
 
 current_profit = 0
 quantity_data = 0
-book_profit = 2
-reenter_threshold = 1
+book_profit = 250
+reenter_threshold = 100
 last_sell_price = None
 waiting_for_reentry = False
 holding_stock = False
@@ -68,7 +67,7 @@ current_trade_id = None
 buy_price = None
 
 # User input for stock token
-instrument_token = 291849
+instrument_token = 1304833   
 
 def rec_db():
     """ Fetch trade history and capital, return JSON-friendly data """
