@@ -22,6 +22,7 @@
           >Invested amount: ₹{{ invested_amount }}</strong
         >
         <strong id="total-profit"></strong>
+        <strong id="today-profit"></strong>
         <strong id="price"></strong>
         <strong id="position"></strong>
 
@@ -108,11 +109,17 @@
 
       function updateTradeTable(trades) {
         let totalProfit = 0;
+        let todayProfit = 0;
         let tableBody = $("#profit-table");
         tableBody.empty();
 
+        let todayDate = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
+
         trades.forEach((trade) => {
           totalProfit += trade.profit;
+          if (trade.sell_time && trade.sell_time.startsWith(todayDate)) {
+            todayProfit += trade.profit || 0;
+          }
           let row = `
                     <tr>
                         <td>${trade.id || "None"}</td>
@@ -129,6 +136,7 @@
         });
 
         $("#total-profit").text(`Total Profit: ₹${totalProfit.toFixed(2)}`);
+        $("#today-profit").text(`Today's Profit: ₹${todayProfit.toFixed(2)}`);
         showButton()
       }
 
@@ -185,13 +193,21 @@
     <script>
       $(document).ready(function () {
         let totalProfit = 0;
+        let todayProfit = 0;
+        let todayDate = new Date().toISOString().split("T")[0];
         $("#profit-table tr").each(function () {
           const profitValue = parseFloat($(this).find("td:eq(7)").text());
           if (!isNaN(profitValue)) {
             totalProfit += profitValue;
+            
+            const sellDateValue = $(this).find("td:eq(6)").text();
+            if (sellDateValue && sellDateValue.startsWith(todayDate)) {
+              todayProfit += profitValue || 0;
+            }
           }
         });
         $("#total-profit").text("Total Profit: ₹" + totalProfit.toFixed(2));
+        $("#today-profit").text(`Today's Profit: ₹${todayProfit.toFixed(2)}`);
       });
     </script>
   </body>

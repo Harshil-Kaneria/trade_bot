@@ -21,7 +21,7 @@ conn = mysql.connector.connect(
 cursor = conn.cursor()
 
 # Initialize Kite API
-enctoken = "TCJP9qJeyMHg5Ncy6AR7oXPQE5PXrzjsc316ryR1slaxbfT5uelAeuIiolF9/6zrFB9nUprdcCvTnEJYe0ianGHe7A5RnMMcfdOuQ85kBB9gWd/gfcZpJA=="
+enctoken = "h0HkCYIHnOzWfuXoIxz179rgfDsp1XYKqIfUkTSYpkpXvE7tXbgdRnLPN4yrJCoA3cNb41EDDUs+qNzxuYwm3baK1Ylj7bCfIyxpbcJexP9cVDYqLd+ugQ=="
 kite = KiteApp(enctoken=enctoken)
 
 # Create tables if they don't exist
@@ -58,8 +58,8 @@ capital, invested_amount = cursor.fetchone()
 
 current_profit = 0
 quantity_data = 0
-book_profit = 2
-reenter_threshold = 1
+book_profit = 300
+reenter_threshold = 150
 last_sell_price = None
 waiting_for_reentry = False
 holding_stock = False
@@ -69,7 +69,7 @@ user_buy_signal = False
 user_sell_signal = False
 
 # User input for stock token
-instrument_token = 291849   
+instrument_token = 498945   
 
 def rec_db():
     """ Fetch trade history and capital, return JSON-friendly data """
