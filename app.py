@@ -21,7 +21,7 @@ conn = mysql.connector.connect(
 cursor = conn.cursor()
 
 # Initialize Kite API
-enctoken = "h0HkCYIHnOzWfuXoIxz179rgfDsp1XYKqIfUkTSYpkpXvE7tXbgdRnLPN4yrJCoA3cNb41EDDUs+qNzxuYwm3baK1Ylj7bCfIyxpbcJexP9cVDYqLd+ugQ=="
+enctoken = "ShwZVELCR9B2Fi0APwRMTVG3IPo5e3g3oVKPN6wDwKVtC2R9Of2rMrES+9xr/T/PxsmbiTrlIAdrXwoH566rZUS0foJX0zD1N4K2P3IYyyahrK7RbWeJMw=="
 kite = KiteApp(enctoken=enctoken)
 
 # Create tables if they don't exist
@@ -58,8 +58,8 @@ capital, invested_amount = cursor.fetchone()
 
 current_profit = 0
 quantity_data = 0
-book_profit = 300
-reenter_threshold = 150
+book_profit = 2
+reenter_threshold = 1
 last_sell_price = None
 waiting_for_reentry = False
 holding_stock = False
@@ -67,9 +67,11 @@ current_trade_id = None
 buy_price = None
 user_buy_signal = False
 user_sell_signal = False
+user_auto_buy = False
+user_stop_reentry = False
 
 # User input for stock token
-instrument_token = 498945   
+instrument_token = 291849   
 
 def rec_db():
     """ Fetch trade history and capital, return JSON-friendly data """
@@ -197,7 +199,7 @@ kws = KiteTicker(api_key="your_api_key", access_token=enctoken + "&user_id=" + u
 
 def on_ticks(ws, ticks):
     """ Handle live stock price updates """
-    global buy_price, holding_stock, current_trade_id, quantity_data, last_sell_price, waiting_for_reentry, invested_amount,user_sell_signal,user_buy_signal
+    global buy_price, holding_stock, current_trade_id, quantity_data, last_sell_price, waiting_for_reentry, invested_amount,user_sell_signal,user_buy_signal,user_auto_buy,user_stop_reentry
 
     for tick in ticks:
         socketio.emit('price_tick', {'event': 'tick', 'data': tick})
@@ -205,7 +207,7 @@ def on_ticks(ws, ticks):
         symbol = tick['instrument_token']
         print(f"Live Data: {price} for Token: {symbol}")
 
-        if not holding_stock and (not waiting_for_reentry or user_buy_signal):
+        if user_auto_buy and not holding_stock and (not waiting_for_reentry or user_buy_signal):
             quantity = int((capital - invested_amount) // price) or 1
             current_trade_id = buy_stock(symbol, price, quantity)
             buy_price = price
@@ -213,7 +215,7 @@ def on_ticks(ws, ticks):
         elif holding_stock and (((price * quantity_data) >= (book_profit + (quantity_data * buy_price))) or user_sell_signal):
             sell_stock(current_trade_id, price)
 
-        elif waiting_for_reentry and (price * quantity_data) <= ((last_sell_price * quantity_data) - reenter_threshold):
+        elif user_stop_reentry and waiting_for_reentry and (price * quantity_data) <= ((last_sell_price * quantity_data) - reenter_threshold):
             quantity = int((capital - invested_amount) // price) or 1
             current_trade_id = buy_stock(symbol, price, quantity)
             buy_price = price
@@ -245,7 +247,7 @@ def start_trading():
 
 @app.route('/api/user-event', methods=['POST'])
 def handle_user_event():
-    global user_sell_signal, user_buy_signal
+    global user_sell_signal, user_buy_signal,user_auto_buy,user_stop_reentry
     data = request.get_json()
     event_type = data.get('event')
     if event_type == 'sell':
@@ -256,6 +258,17 @@ def handle_user_event():
         user_sell_signal = False
         user_buy_signal = True
         print("User buy signal set to True")
+    elif event_type == 'auto_buy':
+        user_auto_buy = True
+        socketio.emit('trade_event', {'event': 'Auto buy', 'message': f'Auto buy activated'})
+    elif event_type == 'stop_auto_reentry':
+        user_stop_reentry = False
+        socketio.emit('trade_event', {'event': 'Stop auto reentry', 'message': f'Stop auto re-entry functionality'})
+    elif event_type == 'start_auto_reentry':
+        user_stop_reentry = True
+        socketio.emit('trade_event', {'event': 'Start auto reentry', 'message': f'Start auto re-entry functionality'})
+
+
 
     return jsonify({"message": f"{event_type} event received"}), 200
 

@@ -25,7 +25,26 @@
         <strong id="today-profit"></strong>
         <strong id="price"></strong>
         <strong id="position"></strong>
-
+      </div>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <button
+          class="btn btn-outline-dark"
+          onclick="userEvent('auto_buy')"
+        >
+          Auto Buy
+        </button>
+        <button
+          class="btn btn-outline-primary"
+          onclick="userEvent('start_auto_reentry')"
+        >
+          Start Auto Reentry
+        </button>
+        <button
+          class="btn btn-outline-secondary"
+          onclick="userEvent('stop_auto_reentry')"
+        >
+          Stop Auto Reentry
+        </button>
         <button
           class="btn btn-outline-success d-none"
           onclick="userEvent('buy')"
