@@ -5,3 +5,4 @@ kiteconnect
 TA-Lib
 numpy
 pandas
+python-dotenv

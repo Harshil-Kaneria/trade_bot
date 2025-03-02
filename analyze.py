@@ -1,9 +1,12 @@
+import os
+from dotenv import load_dotenv
 import time,datetime
 import pandas as pd
 from kite_trade import *
 from kiteconnect import KiteTicker
 
-enctoken = "QesklZhuXkLjpFboAvGPyYcdVJXw5C69riGfsDf98bDzeTtqzYHTUr2BJ5R+jeyiEJS+hkwxAmXT0m88MmlUocLrzpQ+0/Y8hOgkYCicfTuZMf2lq/PbiQ=="
+load_dotenv()
+enctoken = os.getenv("ENCTOKEN")
 kite = KiteApp(enctoken=enctoken)
 
 symbols_list = list(pd.read_csv('data.csv')['SYMBOL \n'])
@@ -69,9 +72,9 @@ print("WebSocket: Connected")
 
 while True:
     # print(df)
-    time.sleep(3)
+    time.sleep(2)
 
-    print("\n\nTime:", datetime.datetime.now().time())
+    print("\nTime:", datetime.datetime.now().time())
     adv_dec_df  = df.copy()
     adv_dec_df = adv_dec_df[adv_dec_df["segment"]!="INDICES"]
     advanced = 0

@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 import time
 import datetime
 import mysql.connector
@@ -60,11 +62,12 @@ user_buy_signal = False
 user_sell_signal = False
 user_auto_buy = False
 user_stop_reentry = False
-enctoken = "QesklZhuXkLjpFboAvGPyYcdVJXw5C69riGfsDf98bDzeTtqzYHTUr2BJ5R+jeyiEJS+hkwxAmXT0m88MmlUocLrzpQ+0/Y8hOgkYCicfTuZMf2lq/PbiQ=="
 instrument_token = 5097729
 trading_symbol = 'DMART'
 order_data = None
 
+load_dotenv()
+enctoken = os.getenv("ENCTOKEN")
 kite = KiteApp(enctoken=enctoken)
 
 def auto_place_order(quantity=1,isBuy=True):
