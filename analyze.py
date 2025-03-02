@@ -7,6 +7,7 @@ enctoken = "QesklZhuXkLjpFboAvGPyYcdVJXw5C69riGfsDf98bDzeTtqzYHTUr2BJ5R+jeyiEJS+
 kite = KiteApp(enctoken=enctoken)
 
 symbols_list = list(pd.read_csv('data.csv')['SYMBOL \n'])
+symbols_list.append("NIFTY BANK")
 
 df = pd.DataFrame(kite.instruments("NSE"))
 df = df[df["tradingsymbol"].isin(symbols_list)].reset_index(drop=True)
@@ -20,6 +21,7 @@ df["PrevClose"] = None
 df["AvgPrice"] = None
 df["Volume"] = None
 df["TradedValue"] = None
+df["Volatility"] = None
 df["Gap%"] = None
 df["ChangePrev%"] = None
 df["ChangeToday%"] = None
@@ -39,6 +41,7 @@ def updateData(i):
     df.loc[i['instrument_token'], "Gap%"] = ((df.loc[i['instrument_token'], "Open"] - df.loc[i['instrument_token'], "PrevClose"]) / df.loc[i['instrument_token'], "PrevClose"]) * 100
     df.loc[i['instrument_token'], "ChangePrev%"] = ((df.loc[i['instrument_token'], "LTP"] - df.loc[i['instrument_token'], "PrevClose"]) / df.loc[i['instrument_token'], "PrevClose"]) * 100
     df.loc[i['instrument_token'], "ChangeToday%"] = ((df.loc[i['instrument_token'], "LTP"] - df.loc[i['instrument_token'], "Open"]) / df.loc[i['instrument_token'], "Open"]) * 100
+    df.loc[i['instrument_token'], "Volatility"] = ((df.loc[i['instrument_token'], "High"]-df.loc[i['instrument_token'], "Low"])/df.loc[i['instrument_token'], "Open"])*100
     try:
         df.loc[i['instrument_token'],"AvgPrice"] = i["average_traded_price"]
         df.loc[i['instrument_token'],"Volume"] = i["volume_traded"]
