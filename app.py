@@ -7,11 +7,9 @@ import numpy as np
 from flask import Flask, render_template,request, jsonify
 from flask_socketio import SocketIO, emit
 
-# Flask app for displaying trades and profits
 app = Flask(__name__)
 socketio = SocketIO(app)
 
-# Database connection
 conn = mysql.connector.connect(
     host='localhost',
     user='root',
@@ -20,7 +18,6 @@ conn = mysql.connector.connect(
 )
 cursor = conn.cursor()
 
-# Create tables if they don't exist
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS trades (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -42,7 +39,6 @@ cursor.execute('''
     )
 ''')
 
-# Initialize portfolio if not exists
 cursor.execute('SELECT * FROM portfolio WHERE id = 1')
 if cursor.fetchone() is None:
     cursor.execute('INSERT INTO portfolio (id, capital, invested_amount) VALUES (1, 100000, 0)')
@@ -169,7 +165,6 @@ def check_open_positions():
     else:
         print("No open positions found.")
 
-# Simulate buying stocks
 def buy_stock(stock, price, quantity):
     """ Execute a buy order and update database """
     global invested_amount, quantity_data, capital, holding_stock,waiting_for_reentry,user_buy_signal,user_sell_signal
@@ -192,7 +187,6 @@ def buy_stock(stock, price, quantity):
     socketio.emit('trade_event', {'event': 'Buy', 'message': f'Bought {stock} at ₹{price}','data':rec_db()})
     return trade_id
 
-# Simulate selling stocks
 def sell_stock(stock_id, price):
     """ Execute a sell order and update database """
     global current_profit, invested_amount, capital, holding_stock, last_sell_price, waiting_for_reentry,user_buy_signal,user_sell_signal
@@ -222,7 +216,6 @@ def sell_stock(stock_id, price):
 
         socketio.emit('trade_event', {'event': 'Sell', 'message': f'Sold stock ID {stock_id} for profit of ₹{profit}','data':rec_db()})
 
-# WebSocket for live data
 user_id = kite.profile()["user_id"]
 kws = KiteTicker(api_key="your_api_key", access_token=enctoken + "&user_id=" + user_id)
 
@@ -257,7 +250,7 @@ def on_connect(ws, response):
 
 def on_close(ws, code, reason):
     print(f"WebSocket closed with code: {code}, reason: {reason}")
-    time.sleep(5)  # Wait before reconnecting
+    time.sleep(5)
     ws.connect(threaded=True)
 
 kws.on_ticks = on_ticks
