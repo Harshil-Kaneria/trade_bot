@@ -173,7 +173,7 @@ def check_open_positions():
 def buy_stock(stock, price, quantity):
     """ Execute a buy order and update database """
     global invested_amount, quantity_data, capital, holding_stock,waiting_for_reentry,user_buy_signal,user_sell_signal
-
+    # auto_place_order(quantity,True)
     # Fetch updated capital before buying
     cursor.execute('SELECT capital FROM portfolio WHERE id = 1')
     capital = cursor.fetchone()[0]
@@ -196,11 +196,11 @@ def buy_stock(stock, price, quantity):
 def sell_stock(stock_id, price):
     """ Execute a sell order and update database """
     global current_profit, invested_amount, capital, holding_stock, last_sell_price, waiting_for_reentry,user_buy_signal,user_sell_signal
-
     cursor.execute('SELECT buy_price, quantity FROM trades WHERE id = %s AND sell_price IS NULL', (stock_id,))
     trade = cursor.fetchone()
     if trade:
         buy_price, quantity = trade
+        # auto_place_order(quantity,False)
         profit = (price - buy_price) * quantity
         current_profit += profit
         invested_amount -= buy_price * quantity
