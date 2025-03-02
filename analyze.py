@@ -88,41 +88,41 @@ while True:
 
     # Index stock
     index_df = df.copy()
-    index_df = index_df[index_df["segment"]=="INDICES"]
-    index_df = index_df[["tradingsymbol","LTP","ChangePrev%"]]
-    print('\n\nIndex -------------------------------------------------------------\n',index_df)
+    index_df = index_df[index_df["segment"]=="INDICES"].reset_index()
+    index_df = index_df[["tradingsymbol","LTP","ChangePrev%","instrument_token"]]
+    print('\nIndex -------------------------------------------------------------\n',index_df)
 
     # Gainers stocks
     gainers_df = df.copy()
-    gainers_df = gainers_df[gainers_df["segment"]!="INDICES"]
+    gainers_df = gainers_df[gainers_df["segment"]!="INDICES"].reset_index()
     gainers_df = gainers_df.sort_values(by="ChangePrev%",ascending=False).reset_index(drop=True)
-    gainers_df = gainers_df[["tradingsymbol","LTP","ChangePrev%","Volume"]]
+    gainers_df = gainers_df[["tradingsymbol","LTP","ChangePrev%","Volume","instrument_token"]]
     gainers_df = gainers_df[:5]
-    print('\n\nGainers -------------------------------------------------------------\n',gainers_df)
+    print('\nGainers -------------------------------------------------------------\n',gainers_df)
 
     # Losers stocks
     losers_df = df.copy()
-    losers_df = losers_df[losers_df["segment"]!="INDICES"]
+    losers_df = losers_df[losers_df["segment"]!="INDICES"].reset_index()
     losers_df = losers_df.sort_values(by="ChangePrev%",ascending=True).reset_index(drop=True)
-    losers_df = losers_df[["tradingsymbol","LTP","ChangePrev%","Volume"]]
+    losers_df = losers_df[["tradingsymbol","LTP","ChangePrev%","Volume","instrument_token"]]
     losers_df = losers_df[:5]
-    print('\n\nLosers -------------------------------------------------------------\n',losers_df)
+    print('\nLosers -------------------------------------------------------------\n',losers_df)
 
     # Most active value stocks
     most_active_value_df = df.copy()
-    most_active_value_df = most_active_value_df[most_active_value_df["segment"]!="INDICES"]
+    most_active_value_df = most_active_value_df[most_active_value_df["segment"]!="INDICES"].reset_index()
     most_active_value_df = most_active_value_df.sort_values(by="TradedValue",ascending=False).reset_index(drop=True)
-    most_active_value_df = most_active_value_df[["tradingsymbol","LTP","ChangePrev%","TradedValue"]]
+    most_active_value_df = most_active_value_df[["tradingsymbol","LTP","ChangePrev%","TradedValue","instrument_token"]]
     most_active_value_df = most_active_value_df[:5]
-    print('\n\nMost active value -------------------------------------------------------------\n',most_active_value_df)
+    print('\nMost active value -------------------------------------------------------------\n',most_active_value_df)
 
     # Most active volume stocks
     most_active_volume_df = df.copy()
-    most_active_volume_df = most_active_volume_df[most_active_volume_df["segment"]!="INDICES"]
+    most_active_volume_df = most_active_volume_df[most_active_volume_df["segment"]!="INDICES"].reset_index()
     most_active_volume_df = most_active_volume_df.sort_values(by="Volume",ascending=False).reset_index(drop=True)
-    most_active_volume_df = most_active_volume_df[["tradingsymbol","LTP","ChangePrev%","Volume"]]
+    most_active_volume_df = most_active_volume_df[["tradingsymbol","LTP","ChangePrev%","Volume","instrument_token"]]
     most_active_volume_df = most_active_volume_df[:5]
-    print('\n\nMost active volume -------------------------------------------------------------\n',most_active_volume_df)
+    print('\nMost active volume -------------------------------------------------------------\n',most_active_volume_df)
 
     exit()
     # time.sleep(1)
