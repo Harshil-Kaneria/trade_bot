@@ -20,10 +20,6 @@ conn = mysql.connector.connect(
 )
 cursor = conn.cursor()
 
-# Initialize Kite API
-enctoken = "ShwZVELCR9B2Fi0APwRMTVG3IPo5e3g3oVKPN6wDwKVtC2R9Of2rMrES+9xr/T/PxsmbiTrlIAdrXwoH566rZUS0foJX0zD1N4K2P3IYyyahrK7RbWeJMw=="
-kite = KiteApp(enctoken=enctoken)
-
 # Create tables if they don't exist
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS trades (
@@ -51,15 +47,14 @@ cursor.execute('SELECT * FROM portfolio WHERE id = 1')
 if cursor.fetchone() is None:
     cursor.execute('INSERT INTO portfolio (id, capital, invested_amount) VALUES (1, 100000, 0)')
     conn.commit()
-
-# Fetch capital and invested amount from DB
 cursor.execute('SELECT capital, invested_amount FROM portfolio WHERE id = 1')
-capital, invested_amount = cursor.fetchone()
 
+capital, invested_amount = cursor.fetchone()
 current_profit = 0
 quantity_data = 0
-book_profit = 2
-reenter_threshold = 1
+book_profit = 250
+book_loss = 500
+reenter_threshold = 150
 last_sell_price = None
 waiting_for_reentry = False
 holding_stock = False
@@ -69,9 +64,10 @@ user_buy_signal = False
 user_sell_signal = False
 user_auto_buy = False
 user_stop_reentry = False
+enctoken = "QesklZhuXkLjpFboAvGPyYcdVJXw5C69riGfsDf98bDzeTtqzYHTUr2BJ5R+jeyiEJS+hkwxAmXT0m88MmlUocLrzpQ+0/Y8hOgkYCicfTuZMf2lq/PbiQ=="
+instrument_token = 291849
 
-# User input for stock token
-instrument_token = 291849   
+kite = KiteApp(enctoken=enctoken)
 
 def rec_db():
     """ Fetch trade history and capital, return JSON-friendly data """
@@ -102,12 +98,10 @@ def update_invested_amount(amount):
     cursor.execute('UPDATE portfolio SET invested_amount = %s WHERE id = 1', (amount,))
     conn.commit()
 
-
 def update_capital(amount):
     """ Update capital in DB """
     cursor.execute('UPDATE portfolio SET capital = %s WHERE id = 1', (amount,))
     conn.commit()
-
 
 def recalculate_invested_amount():
     """ Recalculate invested amount based on open trades in DB """
@@ -116,7 +110,6 @@ def recalculate_invested_amount():
     result = cursor.fetchone()
     invested_amount = result[0] if result[0] is not None else 0
     update_invested_amount(invested_amount)
-
 
 def check_open_positions():
     """ Fetch open trades from DB and restore state """
@@ -135,7 +128,6 @@ def check_open_positions():
             print(f"Resuming open position for {stock_symbol}: Bought at ₹{buy_price_db}, Quantity: {quantity}")
     else:
         print("No open positions found.")
-
 
 # Simulate buying stocks
 def buy_stock(stock, price, quantity):
@@ -159,7 +151,6 @@ def buy_stock(stock, price, quantity):
 
     socketio.emit('trade_event', {'event': 'Buy', 'message': f'Bought {stock} at ₹{price}','data':rec_db()})
     return trade_id
-
 
 # Simulate selling stocks
 def sell_stock(stock_id, price):
@@ -191,11 +182,9 @@ def sell_stock(stock_id, price):
 
         socketio.emit('trade_event', {'event': 'Sell', 'message': f'Sold stock ID {stock_id} for profit of ₹{profit}','data':rec_db()})
 
-
 # WebSocket for live data
 user_id = kite.profile()["user_id"]
 kws = KiteTicker(api_key="your_api_key", access_token=enctoken + "&user_id=" + user_id)
-
 
 def on_ticks(ws, ticks):
     """ Handle live stock price updates """
@@ -212,7 +201,7 @@ def on_ticks(ws, ticks):
             current_trade_id = buy_stock(symbol, price, quantity)
             buy_price = price
 
-        elif holding_stock and (((price * quantity_data) >= (book_profit + (quantity_data * buy_price))) or user_sell_signal):
+        elif holding_stock and (((price * quantity_data) >= (book_profit + (quantity_data * buy_price))) or user_sell_signal or ((quantity_data * (buy_price - price)) >= book_loss)):
             sell_stock(current_trade_id, price)
 
         elif user_stop_reentry and waiting_for_reentry and (price * quantity_data) <= ((last_sell_price * quantity_data) - reenter_threshold):
@@ -221,29 +210,24 @@ def on_ticks(ws, ticks):
             buy_price = price
             waiting_for_reentry = False
 
-
 def on_connect(ws, response):
     print("WebSocket: Connected")
     ws.subscribe([instrument_token])
     ws.set_mode(ws.MODE_QUOTE, [instrument_token])
-
 
 def on_close(ws, code, reason):
     print(f"WebSocket closed with code: {code}, reason: {reason}")
     time.sleep(5)  # Wait before reconnecting
     ws.connect(threaded=True)
 
-
 kws.on_ticks = on_ticks
 kws.on_connect = on_connect
 kws.on_close = on_close
-
 
 @socketio.on('connect')
 def start_trading():
     if not kws.is_connected():
         kws.connect(threaded=True)
-
 
 @app.route('/api/user-event', methods=['POST'])
 def handle_user_event():
@@ -267,11 +251,7 @@ def handle_user_event():
     elif event_type == 'start_auto_reentry':
         user_stop_reentry = True
         socketio.emit('trade_event', {'event': 'Start auto reentry', 'message': f'Start auto re-entry functionality'})
-
-
-
     return jsonify({"message": f"{event_type} event received"}), 200
-
 
 @app.route('/')
 def index():
@@ -280,7 +260,6 @@ def index():
     cursor.execute('SELECT capital, invested_amount FROM portfolio WHERE id = 1')
     capital, invested_amount = cursor.fetchone()
     return render_template('index.html', trades=trades,capital=capital,invested_amount=invested_amount)
-
 
 if __name__ == '__main__':
     check_open_positions()
