@@ -4,3 +4,4 @@ mysql-connector-python
 kiteconnect
 TA-Lib
 numpy
+pandas
