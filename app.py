@@ -65,9 +65,49 @@ user_sell_signal = False
 user_auto_buy = False
 user_stop_reentry = False
 enctoken = "QesklZhuXkLjpFboAvGPyYcdVJXw5C69riGfsDf98bDzeTtqzYHTUr2BJ5R+jeyiEJS+hkwxAmXT0m88MmlUocLrzpQ+0/Y8hOgkYCicfTuZMf2lq/PbiQ=="
-instrument_token = 291849
+instrument_token = 5097729
+trading_symbol = 'DMART'
+order_data = None
 
 kite = KiteApp(enctoken=enctoken)
+
+def auto_place_order(quantity=1,isBuy=True):
+    global trading_symbol,order_data
+    if isBuy:
+        order_data = kite.place_order(variety=kite.VARIETY_REGULAR,
+            exchange=kite.EXCHANGE_NSE,
+            tradingsymbol=trading_symbol,
+            transaction_type=kite.TRANSACTION_TYPE_BUY,
+            quantity=quantity,
+            product=kite.PRODUCT_MIS,
+            order_type=kite.ORDER_TYPE_MARKET,
+            price=None,
+            validity=None,
+            disclosed_quantity=None,
+            trigger_price=None,
+            squareoff=None,
+            stoploss=None,
+            trailing_stoploss=None,
+            tag="HK"
+        )
+    elif order_data is not None:
+        kite.place_order(variety=kite.VARIETY_REGULAR,
+            exchange=kite.EXCHANGE_NSE,
+            tradingsymbol=trading_symbol,
+            transaction_type=kite.TRANSACTION_TYPE_SELL,
+            quantity=quantity,
+            product=kite.PRODUCT_MIS,
+            order_type=kite.ORDER_TYPE_MARKET,
+            price=None,
+            validity=None,
+            disclosed_quantity=None,
+            trigger_price=None,
+            squareoff=None,
+            stoploss=None,
+            trailing_stoploss=None,
+            tag="HK"
+        )
+        order_data = None
 
 def rec_db():
     """ Fetch trade history and capital, return JSON-friendly data """
