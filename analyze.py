@@ -5,7 +5,7 @@ import pandas as pd
 from kite_trade import *
 from kiteconnect import KiteTicker
 
-load_dotenv()
+load_dotenv(override=True)
 enctoken = os.getenv("ENCTOKEN")
 kite = KiteApp(enctoken=enctoken)
 
@@ -70,6 +70,7 @@ while not socket:
 
 print("WebSocket: Connected")
 
+
 while True:
     # print(df)
     time.sleep(2)
@@ -126,6 +127,17 @@ while True:
     most_active_volume_df = most_active_volume_df[["tradingsymbol","LTP","ChangePrev%","Volume","instrument_token"]]
     most_active_volume_df = most_active_volume_df[:5]
     print('\nMost active volume -------------------------------------------------------------\n',most_active_volume_df)
+
+
+    # Harshil picker stocks
+    harshil_best_df = df.copy()
+    harshil_best_df = harshil_best_df[harshil_best_df["segment"]!="INDICES"].reset_index()
+    harshil_best_df = harshil_best_df.sort_values(by="ChangePrev%",ascending=False).reset_index(drop=True)
+    harshil_best_df = harshil_best_df[:5]
+    harshil_best_df = harshil_best_df.sort_values(by="Volatility",ascending=False).reset_index(drop=True)
+    harshil_best_df = harshil_best_df[["tradingsymbol","LTP","ChangePrev%","Volume","Volatility","instrument_token"]]
+    print('\nHarshil picker -------------------------------------------------------------\n',harshil_best_df)
+
 
     exit()
     # time.sleep(1)
