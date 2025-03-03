@@ -1,0 +1,211 @@
+{
+    "statics": {
+        "advanced": 33,
+        "declined": 17,
+        "unchanged": 0
+    },
+    "index_df": [
+        {
+            "tradingsymbol": "NIFTY 50",
+            "LTP": 22119.3,
+            "ChangePrev%": -0.024407110604896132,
+            "instrument_token": 256265
+        },
+        {
+            "tradingsymbol": "NIFTY BANK",
+            "LTP": 48114.3,
+            "ChangePrev%": -0.4765775772731948,
+            "instrument_token": 260105
+        }
+    ],
+    "gainers_df": [
+        {
+            "tradingsymbol": "BEL",
+            "LTP": 257.5,
+            "ChangePrev%": 4.568527918781726,
+            "Volume": 24644079,
+            "instrument_token": 98049
+        },
+        {
+            "tradingsymbol": "GRASIM",
+            "LTP": 2380.0,
+            "ChangePrev%": 3.179936271215828,
+            "Volume": 790068,
+            "instrument_token": 315393
+        },
+        {
+            "tradingsymbol": "EICHERMOT",
+            "LTP": 4914.0,
+            "ChangePrev%": 2.9411764705882275,
+            "Volume": 503560,
+            "instrument_token": 232961
+        },
+        {
+            "tradingsymbol": "JSWSTEEL",
+            "LTP": 976.15,
+            "ChangePrev%": 2.6769748606290027,
+            "Volume": 1744769,
+            "instrument_token": 3001089
+        },
+        {
+            "tradingsymbol": "BPCL",
+            "LTP": 242.6,
+            "ChangePrev%": 2.233459755583642,
+            "Volume": 6864635,
+            "instrument_token": 134657
+        }
+    ],
+    "losers_df": [
+        {
+            "tradingsymbol": "BAJAJ-AUTO",
+            "LTP": 7710.0,
+            "ChangePrev%": -2.4408761340773593,
+            "Volume": 497052,
+            "instrument_token": 4267265
+        },
+        {
+            "tradingsymbol": "COALINDIA",
+            "LTP": 360.6,
+            "ChangePrev%": -2.3690266684716392,
+            "Volume": 12675744,
+            "instrument_token": 5215745
+        },
+        {
+            "tradingsymbol": "RELIANCE",
+            "LTP": 1174.0,
+            "ChangePrev%": -2.1748187651029007,
+            "Volume": 17944938,
+            "instrument_token": 738561
+        },
+        {
+            "tradingsymbol": "BAJAJFINSV",
+            "LTP": 1840.0,
+            "ChangePrev%": -1.725150883939537,
+            "Volume": 1046987,
+            "instrument_token": 4268801
+        },
+        {
+            "tradingsymbol": "HDFCBANK",
+            "LTP": 1703.55,
+            "ChangePrev%": -1.6653197875779342,
+            "Volume": 10602682,
+            "instrument_token": 341249
+        }
+    ],
+    "most_active_value_df": [
+        {
+            "tradingsymbol": "RELIANCE",
+            "LTP": 1174.0,
+            "ChangePrev%": -2.1748187651029007,
+            "TradedValue": 20969916198.66,
+            "instrument_token": 738561
+        },
+        {
+            "tradingsymbol": "HDFCBANK",
+            "LTP": 1703.55,
+            "ChangePrev%": -1.6653197875779342,
+            "TradedValue": 18122740235.32,
+            "instrument_token": 341249
+        },
+        {
+            "tradingsymbol": "TCS",
+            "LTP": 3506.0,
+            "ChangePrev%": 0.6531256728629872,
+            "TradedValue": 17456356004.44,
+            "instrument_token": 2953217
+        },
+        {
+            "tradingsymbol": "INFY",
+            "LTP": 1711.0,
+            "ChangePrev%": 1.380577116786156,
+            "TradedValue": 12841452257.14,
+            "instrument_token": 408065
+        },
+        {
+            "tradingsymbol": "M&M",
+            "LTP": 2612.0,
+            "ChangePrev%": 1.0405787010173722,
+            "TradedValue": 11407942024.42,
+            "instrument_token": 519937
+        }
+    ],
+    "most_active_volume_df": [
+        {
+            "tradingsymbol": "TATASTEEL",
+            "LTP": 138.32,
+            "ChangePrev%": 0.8163265306122482,
+            "Volume": 31154401,
+            "instrument_token": 895745
+        },
+        {
+            "tradingsymbol": "BEL",
+            "LTP": 257.5,
+            "ChangePrev%": 4.568527918781726,
+            "Volume": 24644079,
+            "instrument_token": 98049
+        },
+        {
+            "tradingsymbol": "TATAMOTORS",
+            "LTP": 621.4,
+            "ChangePrev%": 0.12084105373398857,
+            "Volume": 18362700,
+            "instrument_token": 884737
+        },
+        {
+            "tradingsymbol": "RELIANCE",
+            "LTP": 1174.0,
+            "ChangePrev%": -2.1748187651029007,
+            "Volume": 17944938,
+            "instrument_token": 738561
+        },
+        {
+            "tradingsymbol": "COALINDIA",
+            "LTP": 360.6,
+            "ChangePrev%": -2.3690266684716392,
+            "Volume": 12675744,
+            "instrument_token": 5215745
+        }
+    ],
+    "harshil_best_df": [
+        {
+            "tradingsymbol": "BEL",
+            "LTP": 257.5,
+            "ChangePrev%": 4.568527918781726,
+            "Volume": 24644079,
+            "Volatility": 5.874747474747459,
+            "instrument_token": 98049
+        },
+        {
+            "tradingsymbol": "BPCL",
+            "LTP": 242.6,
+            "ChangePrev%": 2.233459755583642,
+            "Volume": 6864635,
+            "Volatility": 4.029288702928868,
+            "instrument_token": 134657
+        },
+        {
+            "tradingsymbol": "JSWSTEEL",
+            "LTP": 976.15,
+            "ChangePrev%": 2.6769748606290027,
+            "Volume": 1744769,
+            "Volatility": 2.977059436913447,
+            "instrument_token": 3001089
+        },
+        {
+            "tradingsymbol": "GRASIM",
+            "LTP": 2380.0,
+            "ChangePrev%": 3.179936271215828,
+            "Volume": 790068,
+            "Volatility": 2.791496671677045,
+            "instrument_token": 315393
+        },
+        {
+            "tradingsymbol": "EICHERMOT",
+            "LTP": 4914.0,
+            "ChangePrev%": 2.9411764705882275,
+            "Volume": 503560,
+            "Volatility": 2.092396933913404,
+            "instrument_token": 232961
+        }
+    ]
+}

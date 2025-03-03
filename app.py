@@ -8,6 +8,8 @@ from kiteconnect import KiteTicker
 import numpy as np
 from flask import Flask, render_template,request, jsonify
 from flask_socketio import SocketIO, emit
+import json
+import subprocess
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -49,6 +51,7 @@ cursor.execute('SELECT capital, invested_amount FROM portfolio WHERE id = 1')
 
 capital, invested_amount = cursor.fetchone()
 current_profit = 0
+current_price = None
 quantity_data = 0
 book_profit = 250
 book_loss = 500
@@ -62,13 +65,26 @@ user_buy_signal = False
 user_sell_signal = False
 user_auto_buy = False
 user_stop_reentry = False
-instrument_token = 40193
-# trading_symbol = 'GRASIM'
+instrument_token = None
+trading_symbol = None
 order_data = None
 
 load_dotenv(override=True)
 enctoken = os.getenv("ENCTOKEN")
 kite = KiteApp(enctoken=enctoken)
+
+def run_analyze():
+    print("Running analyze.py...")
+    subprocess.run(["py", "analyze.py"])
+
+def get_analyze_data():
+    try:
+        run_analyze()
+        with open("analyze_output.json", "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print("No analysis file found. Run `run_analyze()` first.")
+        return None
 
 # def auto_place_order(quantity=1,isBuy=True):
 #     global trading_symbol,order_data
@@ -224,12 +240,13 @@ kws = KiteTicker(api_key="your_api_key", access_token=enctoken + "&user_id=" + u
 
 def on_ticks(ws, ticks):
     """ Handle live stock price updates """
-    global buy_price, holding_stock, current_trade_id, quantity_data, last_sell_price, waiting_for_reentry, invested_amount,user_sell_signal,user_buy_signal,user_auto_buy,user_stop_reentry
+    global buy_price, holding_stock, current_trade_id, quantity_data, last_sell_price, waiting_for_reentry, invested_amount,user_sell_signal,user_buy_signal,user_auto_buy,user_stop_reentry,current_price
 
     for tick in ticks:
         socketio.emit('price_tick', {'event': 'tick', 'data': tick})
         price = tick['last_price']
         symbol = tick['instrument_token']
+        current_price = price
         print(f"Live Data: {price} for Token: {symbol}")
 
         if user_auto_buy and not holding_stock and (not waiting_for_reentry or user_buy_signal):
@@ -254,11 +271,43 @@ def on_connect(ws, response):
 def on_close(ws, code, reason):
     print(f"WebSocket closed with code: {code}, reason: {reason}")
     time.sleep(5)
-    ws.connect(threaded=True)
+    # ws.connect(threaded=True)
+
+if instrument_token is None:
+    data = get_analyze_data()
+    if data:
+        lowest_price_stock = min(data["harshil_best_df"], key=lambda x: x["LTP"])
+        instrument_token = lowest_price_stock['instrument_token']
+        trading_symbol = lowest_price_stock['tradingsymbol']
+    else:
+        exit()
 
 kws.on_ticks = on_ticks
 kws.on_connect = on_connect
 kws.on_close = on_close
+
+def restart_websocket():
+    global kws, instrument_token
+    
+    if kws.is_connected():
+        print(f"Unsubscribing from {instrument_token}...")
+        kws.unsubscribe([instrument_token])
+        time.sleep(1)
+
+        print("Closing WebSocket...")
+        kws.close()
+        time.sleep(2)
+
+    kws = None
+    time.sleep(1)
+
+    kws = KiteTicker(api_key="your_api_key", access_token=enctoken + "&user_id=" + user_id)
+    kws.on_ticks = on_ticks
+    kws.on_connect = on_connect
+    kws.on_close = on_close
+
+    print(f"Reconnecting to new instrument {instrument_token}...")
+    kws.connect(threaded=True)
 
 @socketio.on('connect')
 def start_trading():
@@ -267,16 +316,20 @@ def start_trading():
 
 @app.route('/api/user-event', methods=['POST'])
 def handle_user_event():
-    global user_sell_signal, user_buy_signal,user_auto_buy,user_stop_reentry
+    global buy_price,user_sell_signal, user_buy_signal,user_auto_buy,user_stop_reentry,instrument_token,trading_symbol,current_trade_id,current_price
     data = request.get_json()
     event_type = data.get('event')
     if event_type == 'sell':
-        user_buy_signal = False
-        user_sell_signal = True
+        # user_buy_signal = False
+        # user_sell_signal = True
+        sell_stock(current_trade_id, current_price)
         print("User sell signal set to True")
     elif event_type == 'buy':
-        user_sell_signal = False
-        user_buy_signal = True
+        # user_sell_signal = False
+        # user_buy_signal = True
+        quantity = int((capital - invested_amount) // current_price) or 1
+        current_trade_id = buy_stock(instrument_token, current_price, quantity)
+        buy_price = current_price
         print("User buy signal set to True")
     elif event_type == 'auto_buy':
         user_auto_buy = True
@@ -287,6 +340,14 @@ def handle_user_event():
     elif event_type == 'start_auto_reentry':
         user_stop_reentry = True
         socketio.emit('trade_event', {'event': 'Start auto reentry', 'message': f'Start auto re-entry functionality'})
+    elif event_type == 'scan_market':
+        data = get_analyze_data()
+        if data:
+            lowest_price_stock = max(data["harshil_best_df"], key=lambda x: x["LTP"])
+            instrument_token = lowest_price_stock['instrument_token']
+            trading_symbol = lowest_price_stock['tradingsymbol']
+            restart_websocket()
+            socketio.emit('trade_event', {'event': 'Scan market pick best', 'message': f'Scanning market and new stock picker'})
     return jsonify({"message": f"{event_type} event received"}), 200
 
 @app.route('/')

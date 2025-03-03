@@ -4,6 +4,7 @@ import time,datetime
 import pandas as pd
 from kite_trade import *
 from kiteconnect import KiteTicker
+import json
 
 load_dotenv(override=True)
 enctoken = os.getenv("ENCTOKEN")
@@ -70,11 +71,8 @@ while not socket:
 
 print("WebSocket: Connected")
 
-
-while True:
-    # print(df)
+def analyze_data():
     time.sleep(2)
-
     print("\nTime:", datetime.datetime.now().time())
     adv_dec_df  = df.copy()
     adv_dec_df = adv_dec_df[adv_dec_df["segment"]!="INDICES"]
@@ -138,6 +136,24 @@ while True:
     harshil_best_df = harshil_best_df[["tradingsymbol","LTP","ChangePrev%","Volume","Volatility","instrument_token"]]
     print('\nHarshil picker -------------------------------------------------------------\n',harshil_best_df)
 
+    result = {
+        "statics":{
+            "advanced":advanced,
+            "declined":declined,
+            "unchanged":unchanged
+        },
+        "index_df": index_df.to_dict(orient="records"),
+        "gainers_df": gainers_df.to_dict(orient="records"),
+        "losers_df": losers_df.to_dict(orient="records"),
+        "most_active_value_df": most_active_value_df.to_dict(orient="records"),
+        "most_active_volume_df": most_active_volume_df.to_dict(orient="records"),
+        "harshil_best_df": harshil_best_df.to_dict(orient="records"),
+    }
 
-    exit()
-    # time.sleep(1)
+    with open("analyze_output.json", "w") as f:
+        json.dump(result, f, indent=4)
+
+    print("\nAnalysis saved to analyze_output.json")
+
+if __name__ == "__main__":
+    analyze_data()
