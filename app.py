@@ -13,12 +13,13 @@ import subprocess
 
 app = Flask(__name__)
 socketio = SocketIO(app)
+load_dotenv(override=True)
 
 conn = mysql.connector.connect(
-    host='localhost',
-    user='root',
-    password='',
-    database='trading_bot'
+    host=os.getenv("HOST"),
+    user=os.getenv("USER"),
+    password=os.getenv("PASSWORD"),
+    database=os.getenv("DATABASE"),
 )
 cursor = conn.cursor()
 
@@ -69,7 +70,6 @@ instrument_token = None
 trading_symbol = None
 order_data = None
 
-load_dotenv(override=True)
 enctoken = os.getenv("ENCTOKEN")
 kite = KiteApp(enctoken=enctoken)
 
@@ -184,9 +184,11 @@ def check_open_positions():
     else:
         print("No open positions found.")
 
-def buy_stock(stock, price, quantity):
+def buy_stock(stock, price):
     """ Execute a buy order and update database """
-    global invested_amount, quantity_data, capital, holding_stock,waiting_for_reentry,user_buy_signal,user_sell_signal
+    global invested_amount, quantity_data, capital, holding_stock,waiting_for_reentry,user_buy_signal,user_sell_signal,buy_price
+    quantity = int((capital - invested_amount) // price) or 1
+    
     # auto_place_order(quantity,True)
     # Fetch updated capital before buying
     cursor.execute('SELECT capital FROM portfolio WHERE id = 1')
@@ -202,6 +204,7 @@ def buy_stock(stock, price, quantity):
     holding_stock = True
     user_buy_signal = False
     user_sell_signal = False
+    buy_price = price
 
     socketio.emit('trade_event', {'event': 'Buy', 'message': f'Bought {stock} at ₹{price}','data':rec_db()})
     return trade_id
@@ -243,25 +246,23 @@ def on_ticks(ws, ticks):
     global buy_price, holding_stock, current_trade_id, quantity_data, last_sell_price, waiting_for_reentry, invested_amount,user_sell_signal,user_buy_signal,user_auto_buy,user_stop_reentry,current_price
 
     for tick in ticks:
-        socketio.emit('price_tick', {'event': 'tick', 'data': tick})
         price = tick['last_price']
         symbol = tick['instrument_token']
-        current_price = price
-        print(f"Live Data: {price} for Token: {symbol}")
 
         if user_auto_buy and not holding_stock and (not waiting_for_reentry or user_buy_signal):
-            quantity = int((capital - invested_amount) // price) or 1
-            current_trade_id = buy_stock(symbol, price, quantity)
-            buy_price = price
+            current_trade_id = buy_stock(symbol, price)
 
         elif holding_stock and (((price * quantity_data) >= (book_profit + (quantity_data * buy_price))) or user_sell_signal or ((quantity_data * (buy_price - price)) >= book_loss)):
             sell_stock(current_trade_id, price)
 
         elif user_stop_reentry and waiting_for_reentry and (price * quantity_data) <= ((last_sell_price * quantity_data) - reenter_threshold):
-            quantity = int((capital - invested_amount) // price) or 1
-            current_trade_id = buy_stock(symbol, price, quantity)
-            buy_price = price
+            current_trade_id = buy_stock(symbol, price)
             waiting_for_reentry = False
+
+        current_price = price
+        print(f"Live price - {price} for this {symbol} - {trading_symbol}")
+        socketio.emit('price_tick', {'event': 'tick', 'data': tick})
+
 
 def on_connect(ws, response):
     print("WebSocket: Connected")
@@ -276,9 +277,26 @@ def on_close(ws, code, reason):
 if instrument_token is None:
     data = get_analyze_data()
     if data:
-        lowest_price_stock = min(data["harshil_best_df"], key=lambda x: x["LTP"])
-        instrument_token = lowest_price_stock['instrument_token']
-        trading_symbol = lowest_price_stock['tradingsymbol']
+        top_3_stocks = data["harshil_best_df"][:3]
+        stock_data = [
+            {
+                "stock": x,
+                "quantity": capital // x["LTP"],
+                "volume": x["Volume"]
+            }
+            for x in top_3_stocks
+        ]
+        stock_data.sort(key=lambda x: x["quantity"], reverse=True)
+        best_stock = stock_data[0]
+        if len(stock_data) > 1:
+            second_best = stock_data[1]
+            quantity_diff = best_stock["quantity"] - second_best["quantity"]
+            quantity_threshold = best_stock["quantity"] * 0.1  # 10% threshold
+            if quantity_diff <= quantity_threshold and second_best["volume"] > best_stock["volume"]:
+                best_stock = second_best
+        selected_stock = best_stock["stock"]
+        instrument_token = selected_stock["instrument_token"]
+        trading_symbol = selected_stock["tradingsymbol"]
     else:
         exit()
 
@@ -327,8 +345,7 @@ def handle_user_event():
     elif event_type == 'buy':
         # user_sell_signal = False
         # user_buy_signal = True
-        quantity = int((capital - invested_amount) // current_price) or 1
-        current_trade_id = buy_stock(instrument_token, current_price, quantity)
+        current_trade_id = buy_stock(instrument_token, current_price)
         buy_price = current_price
         print("User buy signal set to True")
     elif event_type == 'auto_buy':
@@ -341,13 +358,28 @@ def handle_user_event():
         user_stop_reentry = True
         socketio.emit('trade_event', {'event': 'Start auto reentry', 'message': f'Start auto re-entry functionality'})
     elif event_type == 'scan_market':
-        data = get_analyze_data()
-        if data:
-            lowest_price_stock = max(data["harshil_best_df"], key=lambda x: x["LTP"])
-            instrument_token = lowest_price_stock['instrument_token']
-            trading_symbol = lowest_price_stock['tradingsymbol']
-            restart_websocket()
-            socketio.emit('trade_event', {'event': 'Scan market pick best', 'message': f'Scanning market and new stock picker'})
+        top_3_stocks = data["harshil_best_df"][:3]
+        stock_data = [
+            {
+                "stock": x,
+                "quantity": capital // x["LTP"],
+                "volume": x["Volume"]
+            }
+            for x in top_3_stocks
+        ]
+        stock_data.sort(key=lambda x: x["quantity"], reverse=True)
+        best_stock = stock_data[0]
+        if len(stock_data) > 1:
+            second_best = stock_data[1]
+            quantity_diff = best_stock["quantity"] - second_best["quantity"]
+            quantity_threshold = best_stock["quantity"] * 0.1  # 10% threshold
+            if quantity_diff <= quantity_threshold and second_best["volume"] > best_stock["volume"]:
+                best_stock = second_best
+        selected_stock = best_stock["stock"]
+        instrument_token = selected_stock["instrument_token"]
+        trading_symbol = selected_stock["tradingsymbol"]
+        restart_websocket()
+        socketio.emit('trade_event', {'event': 'Scan market pick best', 'message': f'Scanning market and new stock picker'})
     return jsonify({"message": f"{event_type} event received"}), 200
 
 @app.route('/')

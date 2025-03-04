@@ -132,7 +132,7 @@ def analyze_data():
     harshil_best_df = harshil_best_df[harshil_best_df["segment"]!="INDICES"].reset_index()
     harshil_best_df = harshil_best_df.sort_values(by="ChangePrev%",ascending=False).reset_index(drop=True)
     harshil_best_df = harshil_best_df[:5]
-    harshil_best_df = harshil_best_df.sort_values(by="Volatility",ascending=False).reset_index(drop=True)
+    harshil_best_df = harshil_best_df.sort_values(by="Volume",ascending=False).reset_index(drop=True)
     harshil_best_df = harshil_best_df[["tradingsymbol","LTP","ChangePrev%","Volume","Volatility","instrument_token"]]
     print('\nHarshil picker -------------------------------------------------------------\n',harshil_best_df)
 
