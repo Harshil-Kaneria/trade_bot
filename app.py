@@ -46,7 +46,7 @@ cursor.execute('''
 
 cursor.execute('SELECT * FROM portfolio WHERE id = 1')
 if cursor.fetchone() is None:
-    cursor.execute('INSERT INTO portfolio (id, capital, invested_amount) VALUES (1, 100000, 0)')
+    cursor.execute('INSERT INTO portfolio (id, capital, invested_amount) VALUES (1, 50000, 0)')
     conn.commit()
 cursor.execute('SELECT capital, invested_amount FROM portfolio WHERE id = 1')
 
@@ -66,8 +66,8 @@ user_buy_signal = False
 user_sell_signal = False
 user_auto_buy = False
 user_stop_reentry = False
-instrument_token = None
-trading_symbol = None
+instrument_token = 291849
+trading_symbol = 'GIFT NIFTY'
 order_data = None
 
 enctoken = os.getenv("ENCTOKEN")
@@ -359,29 +359,8 @@ def handle_user_event():
         socketio.emit('trade_event', {'event': 'Start auto reentry', 'message': f'Start auto re-entry functionality'})
     elif event_type == 'scan_market':
         data = get_analyze_data()
-        if data:
-            top_3_stocks = data["harshil_best_df"][:3]
-            stock_data = [
-                {
-                    "stock": x,
-                    "quantity": capital // x["LTP"],
-                    "volume": x["Volume"]
-                }
-                for x in top_3_stocks
-            ]
-            stock_data.sort(key=lambda x: x["quantity"], reverse=True)
-            best_stock = stock_data[0]
-            if len(stock_data) > 1:
-                second_best = stock_data[1]
-                quantity_diff = best_stock["quantity"] - second_best["quantity"]
-                quantity_threshold = best_stock["quantity"] * 0.1  # 10% threshold
-                if quantity_diff <= quantity_threshold and second_best["volume"] > best_stock["volume"]:
-                    best_stock = second_best
-            selected_stock = best_stock["stock"]
-            instrument_token = selected_stock["instrument_token"]
-            trading_symbol = selected_stock["tradingsymbol"]
-            restart_websocket()
-        socketio.emit('trade_event', {'event': 'Scan market pick best', 'message': f'Scanning market and new stock picker'})
+        if data:  
+            socketio.emit('trade_event', {'event': 'Scan market pick best', 'message': f'Scanning market and new stock picker','data':data})
     return jsonify({"message": f"{event_type} event received"}), 200
 
 @app.route('/')

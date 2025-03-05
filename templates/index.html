@@ -16,58 +16,84 @@
   <body class="bg-light">
     <div class="container mt-5">
       <h1 class="text-center mb-4">Trading Bot</h1>
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <strong id="capital">Total capital: ₹{{ capital }}</strong>
-        <strong id="invested-amount"
-          >Invested amount: ₹{{ invested_amount }}</strong
-        >
-        <strong id="total-profit"></strong>
-        <strong id="today-profit"></strong>
-        <strong id="price"></strong>
-        <strong id="position"></strong>
+      <div class="table-responsive text-center">
+        <table class="table table-bordered">
+          <!-- <thead class="table-dark">
+          <tr>
+            <th>Total Capital</th>
+            <th>Invested Amount</th>
+            <th>Total Profit</th>
+            <th>Today's Profit</th>
+            <th>Price</th>
+            <th>Position</th>
+          </tr>
+          </thead> -->
+          <tbody>
+            <tr>
+              <td id="capital">Total Capital ₹{{ capital }}</td>
+              <td id="invested-amount">Invested Amount ₹{{ invested_amount }}</td>
+              <td id="total-profit">Total Profit ₹0</td>
+              <td id="today-profit">Today's Profit ₹0</td>
+              <td id="price">Price ₹0</td>
+              <td id="position">Position ₹0</td>
+            </tr>
+            <tr>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-dark"
+                  onclick="userEvent('auto_buy')"
+                >
+                  Auto Buy
+                </button>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-warning"
+                  onclick="userEvent('scan_market')"
+                >
+                  Scan market
+                </button>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-primary"
+                  onclick="userEvent('start_auto_reentry')"
+                >
+                  Start Auto Reentry
+                </button>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  onclick="userEvent('stop_auto_reentry')"
+                >
+                  Stop Auto Reentry
+                </button>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-success d-none"
+                  onclick="userEvent('buy')"
+                  id="buy-button"
+                >
+                  Buy
+                </button>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-danger d-none"
+                  onclick="userEvent('sell')"
+                  id="sell-button"
+                >
+                  Sell
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <button
-          class="btn btn-sm btn-outline-dark"
-          onclick="userEvent('auto_buy')"
-        >
-          Auto Buy
-        </button>
-        <button
-          class="btn btn-sm btn-outline-warning"
-          onclick="userEvent('scan_market')"
-        >
-          Scan market
-        </button>
-        <button
-          class="btn btn-sm btn-outline-primary"
-          onclick="userEvent('start_auto_reentry')"
-        >
-          Start Auto Reentry
-        </button>
-        <button
-          class="btn btn-sm btn-outline-secondary"
-          onclick="userEvent('stop_auto_reentry')"
-        >
-          Stop Auto Reentry
-        </button>
-        <button
-          class="btn btn-sm btn-outline-success d-none"
-          onclick="userEvent('buy')"
-          id="buy-button"
-        >
-          Buy
-        </button>
-        <button
-          class="btn btn-sm btn-outline-danger d-none"
-          onclick="userEvent('sell')"
-          id="sell-button"
-        >
-          Sell
-        </button>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-bordered table-striped">
+      <div class="table-responsive text-center">
+        <table class="table table-bordered">
           <thead class="table-dark">
             <tr>
               <th>ID</th>
@@ -110,19 +136,19 @@
       const socket = io();
 
       function userEvent(event) {
-          fetch("/api/user-event", {
-              method: "POST",
-              headers: {
-                  "Content-Type": "application/json"
-              },
-              body: JSON.stringify({ event: event })
-          })
-          .then(response => response.json())
-          .then(data => console.log(data.message))
-          .catch(error => console.error("Error:", error));
+        fetch("/api/user-event", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ event: event }),
+        })
+          .then((response) => response.json())
+          .then((data) => console.log(data.message))
+          .catch((error) => console.error("Error:", error));
       }
 
-      function showButton(){
+      function showButton() {
         if ($("#profit-table tr:eq(0)").find("td:eq(3)").text() === "None") {
           $("#sell-button").removeClass("d-none");
           $("#buy-button").addClass("d-none");
@@ -154,15 +180,15 @@
                         <td>${trade.quantity || "None"}</td>
                         <td>${trade.buy_time || "None"}</td>
                         <td>${trade.sell_time || "None"}</td>
-                        <td>${trade.profit==null?"None":trade.profit}</td>
+                        <td>${trade.profit == null ? "None" : trade.profit}</td>
                     </tr>
                 `;
           tableBody.append(row);
         });
 
-        $("#total-profit").text(`Total Profit: ₹${totalProfit.toFixed(2)}`);
-        $("#today-profit").text(`Today's Profit: ₹${todayProfit.toFixed(2)}`);
-        showButton()
+        $("#total-profit").text(`Total Profit ₹${totalProfit.toFixed(2)}`);
+        $("#today-profit").text(`Today's Profit ₹${todayProfit.toFixed(2)}`);
+        showButton();
       }
 
       socket.on("trade_event", function (data) {
@@ -178,9 +204,9 @@
 
         if (data?.data?.trades) {
           updateTradeTable(data.data.trades);
-          $("#capital").text("Total capital: ₹" + data.data.capital);
+          $("#capital").text("Total Capital ₹" + data.data.capital);
           $("#invested-amount").text(
-            "Invested amount: ₹" + data.data.invested_amount
+            "Invested Amount ₹" + data.data.invested_amount
           );
         }
       });
@@ -202,7 +228,7 @@
           }
 
           $("#position").text(
-            "Position: ₹" +
+            "Position ₹" +
               (
                 (data.data.last_price - cellValue) *
                 parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())
@@ -210,9 +236,9 @@
           );
         }
 
-        showButton()
+        showButton();
         document.title = data.data.last_price + " Bot";
-        $("#price").text("Price: ₹" + data.data.last_price);
+        $("#price").text("Price ₹" + data.data.last_price);
       });
     </script>
     <script>
@@ -224,15 +250,15 @@
           const profitValue = parseFloat($(this).find("td:eq(7)").text());
           if (!isNaN(profitValue)) {
             totalProfit += profitValue;
-            
+
             const sellDateValue = $(this).find("td:eq(6)").text();
             if (sellDateValue && sellDateValue.startsWith(todayDate)) {
               todayProfit += profitValue || 0;
             }
           }
         });
-        $("#total-profit").text("Total Profit: ₹" + totalProfit.toFixed(2));
-        $("#today-profit").text(`Today's Profit: ₹${todayProfit.toFixed(2)}`);
+        $("#total-profit").text("Total Profit ₹" + totalProfit.toFixed(2));
+        $("#today-profit").text(`Today's Profit ₹${todayProfit.toFixed(2)}`);
       });
     </script>
   </body>
