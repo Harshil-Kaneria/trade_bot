@@ -360,7 +360,13 @@ def handle_user_event():
     elif event_type == 'scan_market':
         data = get_analyze_data()
         if data:  
-            socketio.emit('trade_event', {'event': 'Scan market pick best', 'message': f'Scanning market and new stock picker','data':data})
+            socketio.emit('trade_event', {'event': 'Scanned', 'message': f'Scanning market and new stock picker','data':data})
+    elif event_type == "set_token":
+        instrument_token = data.get('instrument_token')
+        trading_symbol = data.get('trading_symbol')
+        restart_websocket()
+        socketio.emit('trade_event', {'event': 'Loaded', 'message': f'New setup for stocks'})
+
     return jsonify({"message": f"{event_type} event received"}), 200
 
 @app.route('/')

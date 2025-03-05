@@ -17,21 +17,13 @@
     <div class="container mt-5">
       <h1 class="text-center mb-4">Trading Bot</h1>
       <div class="table-responsive text-center">
-        <table class="table table-bordered">
-          <!-- <thead class="table-dark">
-          <tr>
-            <th>Total Capital</th>
-            <th>Invested Amount</th>
-            <th>Total Profit</th>
-            <th>Today's Profit</th>
-            <th>Price</th>
-            <th>Position</th>
-          </tr>
-          </thead> -->
+        <table class="table table-bordered table-dark">
           <tbody>
             <tr>
               <td id="capital">Total Capital ₹{{ capital }}</td>
-              <td id="invested-amount">Invested Amount ₹{{ invested_amount }}</td>
+              <td id="invested-amount">
+                Invested Amount ₹{{ invested_amount }}
+              </td>
               <td id="total-profit">Total Profit ₹0</td>
               <td id="today-profit">Today's Profit ₹0</td>
               <td id="price">Price ₹0</td>
@@ -40,7 +32,7 @@
             <tr>
               <td>
                 <button
-                  class="btn btn-sm btn-outline-dark"
+                  class="btn btn-sm btn-outline-light"
                   onclick="userEvent('auto_buy')"
                 >
                   Auto Buy
@@ -48,7 +40,7 @@
               </td>
               <td>
                 <button
-                  class="btn btn-sm btn-outline-warning"
+                  class="btn btn-sm btn-outline-light"
                   onclick="userEvent('scan_market')"
                 >
                   Scan market
@@ -56,7 +48,7 @@
               </td>
               <td>
                 <button
-                  class="btn btn-sm btn-outline-primary"
+                  class="btn btn-sm btn-outline-light"
                   onclick="userEvent('start_auto_reentry')"
                 >
                   Start Auto Reentry
@@ -64,7 +56,7 @@
               </td>
               <td>
                 <button
-                  class="btn btn-sm btn-outline-secondary"
+                  class="btn btn-sm btn-outline-light"
                   onclick="userEvent('stop_auto_reentry')"
                 >
                   Stop Auto Reentry
@@ -72,7 +64,7 @@
               </td>
               <td>
                 <button
-                  class="btn btn-sm btn-outline-success d-none"
+                  class="btn btn-sm btn-outline-light d-none"
                   onclick="userEvent('buy')"
                   id="buy-button"
                 >
@@ -81,7 +73,7 @@
               </td>
               <td>
                 <button
-                  class="btn btn-sm btn-outline-danger d-none"
+                  class="btn btn-sm btn-outline-light d-none"
                   onclick="userEvent('sell')"
                   id="sell-button"
                 >
@@ -123,6 +115,123 @@
         </table>
       </div>
     </div>
+
+    <div
+      class="modal fade"
+      id="stockModal"
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="stockModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="stockModalLabel">
+              Stock Scanner Results
+            </h5>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-dismiss="modal"
+              onclick="closeModal()"
+            >
+              Close
+            </button>
+          </div>
+          <div class="modal-body">
+            <!-- Market Statistics -->
+            <h5>Market Overview</h5>
+            <p>
+              <strong>Advanced:</strong> <span id="advanced"></span>,
+              <strong>Declined:</strong> <span id="declined"></span>,
+              <strong>Unchanged:</strong> <span id="unchanged"></span>
+            </p>
+
+            <!-- Stock Data -->
+            <h5>Top Gainers</h5>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>LTP</th>
+                  <th>Change (%)</th>
+                  <th>Volume</th>
+                  <th>Setup</th>
+                </tr>
+              </thead>
+              <tbody id="gainersTable"></tbody>
+            </table>
+
+            <h5>Top Losers</h5>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>LTP</th>
+                  <th>Change (%)</th>
+                  <th>Volume</th>
+                  <th>Setup</th>
+                </tr>
+              </thead>
+              <tbody id="losersTable"></tbody>
+            </table>
+
+            <h5>Most Active (By Value)</h5>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>LTP</th>
+                  <th>Volume</th>
+                  <th>Setup</th>
+                </tr>
+              </thead>
+              <tbody id="mostActiveValueTable"></tbody>
+            </table>
+
+            <h5>Most Active (By Volume)</h5>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>LTP</th>
+                  <th>Volume</th>
+                  <th>Setup</th>
+                </tr>
+              </thead>
+              <tbody id="mostActiveVolumeTable"></tbody>
+            </table>
+
+            <h5>Harshil's Best Picks</h5>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>LTP</th>
+                  <th>Change (%)</th>
+                  <th>Volume</th>
+                  <th>Volatility</th>
+                  <th>Setup</th>
+                </tr>
+              </thead>
+              <tbody id="harshilBestTable"></tbody>
+            </table>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-dismiss="modal"
+              onclick="closeModal()"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Bootstrap JS and dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
@@ -135,13 +244,104 @@
     <script>
       const socket = io();
 
-      function userEvent(event) {
+      function closeModal() {
+        $("#stockModal").modal("hide");
+      }
+
+      function updateModal(data) {
+        // Update Market Statistics
+        $("#advanced").text(data.statics.advanced);
+        $("#declined").text(data.statics.declined);
+        $("#unchanged").text(data.statics.unchanged);
+
+        // Populate Gainers Table
+        let gainersHtml = "";
+        data.gainers_df.forEach((stock) => {
+          gainersHtml += `<tr>
+                    <td>${stock.tradingsymbol}</td>
+                    <td>${stock.LTP}</td>
+                    <td>${stock["ChangePrev%"].toFixed(2)}%</td>
+                    <td>${stock.Volume.toLocaleString()}</td>
+                    <td><button class="btn btn-sm btn-outline-dark"onclick="userEvent('set_token',${
+                      stock.instrument_token
+                    },'${stock.tradingsymbol}')">Set</button></td>
+                </tr>`;
+        });
+        $("#gainersTable").html(gainersHtml);
+
+        // Populate Losers Table
+        let losersHtml = "";
+        data.losers_df.forEach((stock) => {
+          losersHtml += `<tr>
+                    <td>${stock.tradingsymbol}</td>
+                    <td>${stock.LTP}</td>
+                    <td>${stock["ChangePrev%"].toFixed(2)}%</td>
+                    <td>${stock.Volume.toLocaleString()}</td>
+                    <td><button class="btn btn-sm btn-outline-dark"onclick="userEvent('set_token',${
+                      stock.instrument_token
+                    },'${stock.tradingsymbol}')">Set</button></td>
+                </tr>`;
+        });
+        $("#losersTable").html(losersHtml);
+
+        // Populate Most Active by Volume Table
+        let mostActiveVolumeHtml = "";
+        data.most_active_volume_df.forEach((stock) => {
+          mostActiveVolumeHtml += `<tr>
+                    <td>${stock.tradingsymbol}</td>
+                    <td>${stock.LTP}</td>
+                    <td>${stock.Volume.toLocaleString()}</td>
+                    <td><button class="btn btn-sm btn-outline-dark"onclick="userEvent('set_token',${
+                      stock.instrument_token
+                    },'${stock.tradingsymbol}')">Set</button></td>
+                </tr>`;
+        });
+        $("#mostActiveVolumeTable").html(mostActiveVolumeHtml);
+
+        let mostActiveValueHtml = "";
+        data.most_active_value_df.forEach((stock) => {
+          mostActiveValueHtml += `<tr>
+                    <td>${stock.tradingsymbol}</td>
+                    <td>${stock.LTP}</td>
+                    <td>${stock.TradedValue.toLocaleString()}</td>
+                    <td><button class="btn btn-sm btn-outline-dark"onclick="userEvent('set_token',${
+                      stock.instrument_token
+                    },'${stock.tradingsymbol}')">Set</button></td>
+                </tr>`;
+        });
+        $("#mostActiveValueTable").html(mostActiveValueHtml);
+
+        // Populate Harshil's Best Picks Table
+        let harshilBestHtml = "";
+        data.harshil_best_df.forEach((stock) => {
+          harshilBestHtml += `<tr>
+                    <td>${stock.tradingsymbol}</td>
+                    <td>${stock.LTP}</td>
+                    <td>${stock["ChangePrev%"].toFixed(2)}%</td>
+                    <td>${stock.Volume.toLocaleString()}</td>
+                    <td>${stock.Volatility.toFixed(2)}</td>
+                    <td><button class="btn btn-sm btn-outline-dark"onclick="userEvent('set_token',${
+                      stock.instrument_token
+                    },'${stock.tradingsymbol}')">Set</button></td>
+                </tr>`;
+        });
+        $("#harshilBestTable").html(harshilBestHtml);
+
+        // Show modal
+        $("#stockModal").modal("show");
+      }
+
+      function userEvent(event, instrument_token = "", trading_symbol = "") {
         fetch("/api/user-event", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ event: event }),
+          body: JSON.stringify({
+            event: event,
+            instrument_token: instrument_token,
+            trading_symbol: trading_symbol,
+          }),
         })
           .then((response) => response.json())
           .then((data) => console.log(data.message))
@@ -198,6 +398,12 @@
           } else {
             toastr.info(data.message, data.event);
           }
+        } else if (data.event == "Scanned") {
+          toastr.info(data.message, data.event);
+          updateModal(data.data);
+        } else if (data.event == "Loaded") {
+          toastr.info(data.message, data.event);
+          closeModal();
         } else {
           toastr.success(data.message, data.event);
         }
@@ -259,6 +465,15 @@
         });
         $("#total-profit").text("Total Profit ₹" + totalProfit.toFixed(2));
         $("#today-profit").text(`Today's Profit ₹${todayProfit.toFixed(2)}`);
+      });
+      $(document).keydown(function (event) {
+        if (event.key === "Enter") {
+          if (!$("#buy-button").hasClass("d-none")) {
+            $("#buy-button").click();
+          } else if (!$("#sell-button").hasClass("d-none")) {
+            $("#sell-button").click();
+          }
+        }
       });
     </script>
   </body>

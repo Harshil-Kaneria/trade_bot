@@ -50,3 +50,5 @@ coverage.xml
 .env
 .env.local
 .env.*.local
+
+analyze_output.json
