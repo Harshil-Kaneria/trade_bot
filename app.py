@@ -6,13 +6,16 @@ import mysql.connector
 from kite_trade import *
 from kiteconnect import KiteTicker
 import numpy as np
+import logging
 from flask import Flask, render_template,request, jsonify
 from flask_socketio import SocketIO, emit
 import json
 import subprocess
 
 app = Flask(__name__)
-socketio = SocketIO(app)
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+socketio = SocketIO(app,logger=False, engineio_logger=False)
 load_dotenv(override=True)
 
 conn = mysql.connector.connect(
@@ -54,7 +57,7 @@ capital, invested_amount = cursor.fetchone()
 current_profit = 0
 current_price = None
 quantity_data = 0
-book_profit = 250
+book_profit = 300
 book_loss = 500
 reenter_threshold = 150
 last_sell_price = None
