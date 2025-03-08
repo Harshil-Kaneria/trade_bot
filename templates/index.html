@@ -17,7 +17,7 @@
     <div class="container mt-5">
       <h1 class="text-center mb-4">Trading Bot</h1>
       <div class="table-responsive text-center">
-        <table class="table table-bordered table-dark">
+        <table class="table table-bordered">
           <tbody>
             <tr>
               <td id="capital">Total Capital ₹{{ capital }}</td>
@@ -32,7 +32,7 @@
             <tr>
               <td>
                 <button
-                  class="btn btn-sm btn-outline-light"
+                  class="btn btn-sm btn-outline-dark"
                   onclick="userEvent('auto_buy')"
                 >
                   Auto Buy
@@ -40,7 +40,7 @@
               </td>
               <td>
                 <button
-                  class="btn btn-sm btn-outline-light"
+                  class="btn btn-sm btn-outline-dark"
                   onclick="userEvent('scan_market')"
                 >
                   Scan market
@@ -48,7 +48,7 @@
               </td>
               <td>
                 <button
-                  class="btn btn-sm btn-outline-light"
+                  class="btn btn-sm btn-outline-dark"
                   onclick="userEvent('start_auto_reentry')"
                 >
                   Start Auto Reentry
@@ -56,7 +56,7 @@
               </td>
               <td>
                 <button
-                  class="btn btn-sm btn-outline-light"
+                  class="btn btn-sm btn-outline-dark"
                   onclick="userEvent('stop_auto_reentry')"
                 >
                   Stop Auto Reentry
@@ -64,7 +64,7 @@
               </td>
               <td>
                 <button
-                  class="btn btn-sm btn-outline-light d-none"
+                  class="btn btn-sm btn-outline-dark d-none"
                   onclick="userEvent('buy')"
                   id="buy-button"
                 >
@@ -73,7 +73,7 @@
               </td>
               <td>
                 <button
-                  class="btn btn-sm btn-outline-light d-none"
+                  class="btn btn-sm btn-outline-dark d-none"
                   onclick="userEvent('sell')"
                   id="sell-button"
                 >
@@ -85,7 +85,7 @@
         </table>
       </div>
       <div class="table-responsive text-center">
-        <table class="table table-bordered">
+        <table class="table table-bordered table-hover">
           <thead class="table-dark">
             <tr>
               <th>ID</th>
