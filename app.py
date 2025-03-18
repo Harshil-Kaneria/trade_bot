@@ -49,7 +49,7 @@ cursor.execute('''
 
 cursor.execute('SELECT * FROM portfolio WHERE id = 1')
 if cursor.fetchone() is None:
-    cursor.execute('INSERT INTO portfolio (id, capital, invested_amount) VALUES (1, 50000, 0)')
+    cursor.execute('INSERT INTO portfolio (id, capital, invested_amount) VALUES (1, 90000, 0)')
     conn.commit()
 cursor.execute('SELECT capital, invested_amount FROM portfolio WHERE id = 1')
 
@@ -57,9 +57,9 @@ capital, invested_amount = cursor.fetchone()
 current_profit = 0
 current_price = None
 quantity_data = 0
-book_profit = 250
-book_loss = 500
-reenter_threshold = 100
+book_profit = 260
+book_loss = 510
+reenter_threshold = 200
 last_sell_price = None
 waiting_for_reentry = False
 holding_stock = False
@@ -69,8 +69,8 @@ user_buy_signal = False
 user_sell_signal = False
 user_auto_buy = False
 user_stop_reentry = False
-instrument_token = 3918849
-trading_symbol = 'SEPC'
+instrument_token = 256265
+trading_symbol = 'NIFTY 50'
 order_data = None
 
 enctoken = os.getenv("ENCTOKEN")
@@ -89,7 +89,7 @@ def get_analyze_data():
         print("No analysis file found. Run `run_analyze()` first.")
         return None
 
-def auto_place_order(quantity=1,isBuy=True):
+def auto_place_order(quantity=1,isBuy=True,price=None):
     global trading_symbol,order_data
     if isBuy:
         order_data = kite.place_order(variety=kite.VARIETY_REGULAR,
@@ -99,7 +99,7 @@ def auto_place_order(quantity=1,isBuy=True):
             quantity=quantity,
             product=kite.PRODUCT_MIS,
             order_type=kite.ORDER_TYPE_MARKET,
-            price=None,
+            price=price,
             validity=None,
             disclosed_quantity=None,
             trigger_price=None,
@@ -116,7 +116,7 @@ def auto_place_order(quantity=1,isBuy=True):
             quantity=quantity,
             product=kite.PRODUCT_MIS,
             order_type=kite.ORDER_TYPE_MARKET,
-            price=None,
+            price=price,
             validity=None,
             disclosed_quantity=None,
             trigger_price=None,
@@ -171,7 +171,7 @@ def recalculate_invested_amount():
 
 def check_open_positions():
     """ Fetch open trades from DB and restore state """
-    global holding_stock, current_trade_id, buy_price, quantity_data, invested_amount
+    global holding_stock, current_trade_id, buy_price, quantity_data, invested_amount,order_data
     cursor.execute('SELECT id, stock_symbol, buy_price, quantity FROM trades WHERE sell_price IS NULL')
     open_trades = cursor.fetchall()
 
@@ -182,6 +182,7 @@ def check_open_positions():
             buy_price = buy_price_db
             quantity_data = quantity
             holding_stock = True
+            order_data = 123
             invested_amount += buy_price * quantity  # Update invested amount
             print(f"Resuming open position for {stock_symbol}: Bought at ₹{buy_price_db}, Quantity: {quantity}")
     else:
@@ -264,7 +265,7 @@ def on_ticks(ws, ticks):
 
         current_price = price
         print(f"Live price - {price} for this {symbol} - {trading_symbol}")
-        socketio.emit('price_tick', {'event': 'tick', 'data': tick})
+        socketio.emit('price_tick', {'event': 'tick', 'data': tick,'instrument_token':instrument_token,'trading_symbol':trading_symbol})
 
 
 def on_connect(ws, response):
@@ -361,7 +362,7 @@ def index():
     trades = cursor.fetchall()
     cursor.execute('SELECT capital, invested_amount FROM portfolio WHERE id = 1')
     capital, invested_amount = cursor.fetchone()
-    return render_template('index.html', trades=trades,capital=capital,invested_amount=invested_amount)
+    return render_template('index.html', trades=trades,capital=capital,invested_amount=invested_amount,trading_symbol=trading_symbol,instrument_token=instrument_token)
 
 if __name__ == '__main__':
     check_open_positions()

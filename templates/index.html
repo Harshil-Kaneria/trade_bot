@@ -4,7 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Trading Bot</title>
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.png') }}">
+    <link
+      rel="icon"
+      type="image/x-icon"
+      href="{{ url_for('static', filename='favicon.png') }}"
+    />
     <link
       href="{{ url_for('static', filename='bootstrap.min.css') }}"
       rel="stylesheet"
@@ -14,111 +18,124 @@
       href="{{ url_for('static', filename='toastr.min.css') }}"
     />
     <link
+      href="{{ url_for('static', filename='select2.min.css') }}"
+      rel="stylesheet"
+    />
+    <link
       rel="stylesheet"
       href="{{ url_for('static', filename='custom.css') }}"
-    />   
+    />
   </head>
   <body class="bg-light">
     <div class="bg-text">HK Developer</div>
+
     <div class="m-3">
-        <div class="table-responsive text-center">
-          <table class="table table-bordered">
-            <tbody>
-              <tr>
-                <td id="capital">Total Capital ₹{{ capital }}</td>
-                <td id="invested-amount">
-                  Invested Amount ₹{{ invested_amount }}
-                </td>
-                <td id="total-profit">Total Profit ₹0</td>
-                <td id="today-profit">Today's Profit ₹0</td>
-                <td id="price">Price ₹0</td>
-                <td id="position">Position ₹0</td>
-              </tr>
-              <tr>
-                <td>
-                  <button
-                    class="btn btn-sm btn-outline-dark"
-                    onclick="userEvent('auto_buy')"
-                  >
-                    Auto Buy
-                  </button>
-                </td>
-                <td>
-                  <button
-                    class="btn btn-sm btn-outline-dark"
-                    onclick="userEvent('scan_market')"
-                  >
-                    Scan market
-                  </button>
-                </td>
-                <td>
-                  <button
-                    class="btn btn-sm btn-outline-dark"
-                    onclick="userEvent('start_auto_reentry')"
-                  >
-                    Start Auto Reentry
-                  </button>
-                </td>
-                <td>
-                  <button
-                    class="btn btn-sm btn-outline-dark"
-                    onclick="userEvent('stop_auto_reentry')"
-                  >
-                    Stop Auto Reentry
-                  </button>
-                </td>
-                <td>
-                  <button
-                    class="btn btn-sm btn-outline-dark d-none"
-                    onclick="userEvent('buy')"
-                    id="buy-button"
-                  >
-                    Buy
-                  </button>
-                </td>
-                <td>
-                  <button
-                    class="btn btn-sm btn-outline-dark d-none"
-                    onclick="userEvent('sell')"
-                    id="sell-button"
-                  >
-                    Sell
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="table-responsive text-center">
-          <table class="table table-bordered table-hover">
-            <thead class="table-dark">
-              <tr>
-                <th>ID</th>
-                <th>Stock Symbol</th>
-                <th>Buy Price</th>
-                <th>Sell Price</th>
-                <th>Quantity</th>
-                <th>Buy Time</th>
-                <th>Sell Time</th>
-                <th>Profit</th>
-              </tr>
-            </thead>
-            <tbody id="profit-table">
-              {% for trade in trades %}
-              <tr>
-                <td>{{ trade[0] }}</td>
-                <td>{{ trade[1] }}</td>
-                <td>{{ trade[2] }}</td>
-                <td>{{ trade[3] }}</td>
-                <td>{{ trade[4] }}</td>
-                <td>{{ trade[5] }}</td>
-                <td>{{ trade[6] }}</td>
-                <td>{{ trade[7] }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+      <div class="table-responsive text-center">
+        <table class="table table-bordered">
+          <tbody>
+            <tr>
+              <td id="trading_symbol">{{ trading_symbol }}</td>
+              <td id="capital">Total Capital ₹{{ capital }}</td>
+              <td id="invested-amount">
+                Invested Amount ₹{{ invested_amount }}
+              </td>
+              <td id="total-profit">Total Profit ₹0</td>
+              <td id="today-profit">Today's Profit ₹0</td>
+              <td id="price">Price ₹0</td>
+              <td id="position">Position ₹0</td>
+            </tr>
+            <tr>
+              <td id="instrument_token">{{ instrument_token }}</td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-dark"
+                  onclick="userEvent('auto_buy')"
+                >
+                  Auto Buy
+                </button>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-dark"
+                  onclick="userEvent('scan_market')"
+                >
+                  Scan market
+                </button>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-dark"
+                  onclick="userEvent('start_auto_reentry')"
+                >
+                  Start Auto Reentry
+                </button>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-dark"
+                  onclick="userEvent('stop_auto_reentry')"
+                >
+                  Stop Auto Reentry
+                </button>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-dark d-none"
+                  onclick="userEvent('buy')"
+                  id="buy-button"
+                >
+                  Buy
+                </button>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-dark d-none"
+                  onclick="userEvent('sell')"
+                  id="sell-button"
+                >
+                  Sell
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mb-3 d-flex align-items-center" id="search-bar">
+        <select id="stock-select" class="w-100">
+          <option value="">Select a stock</option>
+        </select>
+        <button id="set-button" class="btn btn-sm btn-dark ms-2" style="display: none;">Set</button>
+      </div>
+      <div class="table-responsive text-center">
+        <table class="table table-bordered table-hover">
+          <thead class="table-dark">
+            <tr>
+              <th>ID</th>
+              <th>Stock Symbol</th>
+              <th>Buy Price</th>
+              <th>Sell Price</th>
+              <th>Quantity</th>
+              <th>Buy Time</th>
+              <th>Sell Time</th>
+              <th>Profit</th>
+            </tr>
+          </thead>
+          <tbody id="profit-table">
+            {% for trade in trades %}
+            <tr>
+              <td>{{ trade[0] }}</td>
+              <td>{{ trade[1] }}</td>
+              <td>{{ trade[2] }}</td>
+              <td>{{ trade[3] }}</td>
+              <td>{{ trade[4] }}</td>
+              <td>{{ trade[5] }}</td>
+              <td>{{ trade[6] }}</td>
+              <td>{{ trade[7] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div
@@ -242,6 +259,7 @@
     <script src="{{ url_for('static', filename='socket.io.min.js') }}"></script>
     <script src="{{ url_for('static', filename='jquery.min.js') }}"></script>
     <script src="{{ url_for('static', filename='toastr.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='select2.min.js') }}"></script>
     <script>
       const socket = io();
 
@@ -353,9 +371,11 @@
         if ($("#profit-table tr:eq(0)").find("td:eq(3)").text() === "None") {
           $("#sell-button").removeClass("d-none");
           $("#buy-button").addClass("d-none");
+          $("#search-bar").addClass("d-none");
         } else {
-          $("#buy-button").removeClass("d-none");
           $("#sell-button").addClass("d-none");
+          $("#buy-button").removeClass("d-none");
+          $("#search-bar").removeClass("d-none");
         }
       }
 
@@ -446,6 +466,8 @@
         showButton();
         document.title = data.data.last_price + " Bot";
         $("#price").text("Price ₹" + data.data.last_price);
+        $("#instrument_token").text(data.instrument_token);
+        $("#trading_symbol").text(data.trading_symbol);
       });
     </script>
     <script>
@@ -476,6 +498,54 @@
           }
         }
       });
+    </script>
+    <script>
+      $(document).ready(function () {
+        $("#stock-select").select2({
+          placeholder: "Search stock...",
+          ajax: {
+            url: "{{ url_for('static', filename='symbols.json') }}",
+            dataType: "json",
+            delay: 250,
+            data: function (params) {
+              return {
+                q: params.term, // Pass search term as query parameter
+              };
+            },
+            processResults: function (data, params) {
+              let filteredResults = data.filter(
+                (item) =>
+                  item.tradingsymbol
+                    .toLowerCase()
+                    .includes((params.term || "").toLowerCase()) ||
+                  item.name
+                    .toLowerCase()
+                    .includes((params.term || "").toLowerCase())
+              );
+
+              return {
+                results: filteredResults.map((item) => ({
+                  id: item.instrument_token,
+                  text: item.tradingsymbol + " - " + item.name,
+                  stockData: item
+                })),
+              };
+            },
+            cache: true,
+          },
+        });
+      });
+      $('#stock-select').on('select2:select', function (e) {
+        selectedStock = e.params.data.stockData;
+        $('#set-button').show();
+    });
+    $('#set-button').click(function () {
+        if (selectedStock) {
+            userEvent('set_token', selectedStock.instrument_token, selectedStock.tradingsymbol);
+        } else {
+            toastr.error("Please select a stock first.", "Error");
+        }
+    });
     </script>
   </body>
 </html>
