@@ -2,7 +2,6 @@ Flask
 flask-socketio
 mysql-connector-python
 kiteconnect
-TA-Lib
 numpy
 pandas
 python-dotenv

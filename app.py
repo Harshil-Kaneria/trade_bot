@@ -29,13 +29,15 @@ cursor = conn.cursor()
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS trades (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        stock_symbol VARCHAR(20),
+        stock_symbol VARCHAR(255),
         buy_price FLOAT,
         sell_price FLOAT,
         quantity INT,
         buy_time DATETIME,
         sell_time DATETIME,
-        profit FLOAT
+        profit FLOAT,
+        trading_symbol VARCHAR(255),
+        order_id VARCHAR(255)
     )
 ''')
 
@@ -49,7 +51,7 @@ cursor.execute('''
 
 cursor.execute('SELECT * FROM portfolio WHERE id = 1')
 if cursor.fetchone() is None:
-    cursor.execute('INSERT INTO portfolio (id, capital, invested_amount) VALUES (1, 90000, 0)')
+    cursor.execute('INSERT INTO portfolio (id, capital, invested_amount) VALUES (1, 100000, 0)')
     conn.commit()
 cursor.execute('SELECT capital, invested_amount FROM portfolio WHERE id = 1')
 
@@ -57,8 +59,8 @@ capital, invested_amount = cursor.fetchone()
 current_profit = 0
 current_price = None
 quantity_data = 0
-book_profit = 260
-book_loss = 510
+book_profit = 350
+book_loss = 550
 reenter_threshold = 200
 last_sell_price = None
 waiting_for_reentry = False
@@ -69,8 +71,8 @@ user_buy_signal = False
 user_sell_signal = False
 user_auto_buy = False
 user_stop_reentry = False
-instrument_token = 256265
-trading_symbol = 'NIFTY 50'
+instrument_token = 5097729
+trading_symbol = 'DMART'
 order_data = None
 
 enctoken = os.getenv("ENCTOKEN")
@@ -89,43 +91,44 @@ def get_analyze_data():
         print("No analysis file found. Run `run_analyze()` first.")
         return None
 
-def auto_place_order(quantity=1,isBuy=True,price=None):
-    global trading_symbol,order_data
-    if isBuy:
-        order_data = kite.place_order(variety=kite.VARIETY_REGULAR,
-            exchange=kite.EXCHANGE_NSE,
-            tradingsymbol=trading_symbol,
-            transaction_type=kite.TRANSACTION_TYPE_BUY,
-            quantity=quantity,
-            product=kite.PRODUCT_MIS,
-            order_type=kite.ORDER_TYPE_MARKET,
-            price=price,
-            validity=None,
-            disclosed_quantity=None,
-            trigger_price=None,
-            squareoff=None,
-            stoploss=None,
-            trailing_stoploss=None,
-            tag="HK"
-        )
-    elif order_data is not None:
-        kite.place_order(variety=kite.VARIETY_REGULAR,
-            exchange=kite.EXCHANGE_NSE,
-            tradingsymbol=trading_symbol,
-            transaction_type=kite.TRANSACTION_TYPE_SELL,
-            quantity=quantity,
-            product=kite.PRODUCT_MIS,
-            order_type=kite.ORDER_TYPE_MARKET,
-            price=price,
-            validity=None,
-            disclosed_quantity=None,
-            trigger_price=None,
-            squareoff=None,
-            stoploss=None,
-            trailing_stoploss=None,
-            tag="HK"
-        )
-        order_data = None
+# def auto_place_order(quantity=1,isBuy=True,price=None):
+#     global trading_symbol,order_data
+#     if isBuy:
+#         order_data = kite.place_order(variety=kite.VARIETY_REGULAR,
+#             exchange=kite.EXCHANGE_NSE,
+#             tradingsymbol=trading_symbol,
+#             transaction_type=kite.TRANSACTION_TYPE_BUY,
+#             quantity=quantity,
+#             product=kite.PRODUCT_MIS,
+#             order_type=kite.ORDER_TYPE_MARKET,
+#             price=price,
+#             validity=None,
+#             disclosed_quantity=None,
+#             trigger_price=None,
+#             squareoff=None,
+#             stoploss=None,
+#             trailing_stoploss=None,
+#             tag="HK"
+#         )
+#     elif order_data is not None:
+#         kite.place_order(variety=kite.VARIETY_REGULAR,
+#             exchange=kite.EXCHANGE_NSE,
+#             tradingsymbol=trading_symbol,
+#             transaction_type=kite.TRANSACTION_TYPE_SELL,
+#             quantity=quantity,
+#             product=kite.PRODUCT_MIS,
+#             order_type=kite.ORDER_TYPE_MARKET,
+#             price=price,
+#             validity=None,
+#             disclosed_quantity=None,
+#             trigger_price=None,
+#             squareoff=None,
+#             stoploss=None,
+#             trailing_stoploss=None,
+#             tag="HK"
+#         )
+#         order_data = None
+#     return order_data
 
 def rec_db():
     """ Fetch trade history and capital, return JSON-friendly data """
@@ -146,7 +149,9 @@ def rec_db():
             "quantity": trade[4],
             "buy_time": str(trade[5]),  # Convert datetime to string
             "sell_time": str(trade[6]) if trade[6] else None,
-            "profit": trade[7]
+            "profit": trade[7],
+            "trading_symbol": trade[8],
+            "order_id": trade[9]
         })
 
     return {"trades": trades_list, "capital": capital,"invested_amount":invested_amount}
@@ -171,18 +176,24 @@ def recalculate_invested_amount():
 
 def check_open_positions():
     """ Fetch open trades from DB and restore state """
-    global holding_stock, current_trade_id, buy_price, quantity_data, invested_amount,order_data
-    cursor.execute('SELECT id, stock_symbol, buy_price, quantity FROM trades WHERE sell_price IS NULL')
+    global holding_stock, current_trade_id, buy_price, quantity_data, invested_amount,order_data,trading_symbol,instrument_token
+    cursor.execute('SELECT id, stock_symbol, buy_price, quantity, trading_symbol, order_id FROM trades WHERE sell_price IS NULL')
     open_trades = cursor.fetchall()
+
+    # id, stock_symbol, buy_price, quantity, trading_symbol, order_id
+    # id, stock_symbol, buy_price, quantity
 
     if open_trades:
         for trade in open_trades:
-            trade_id, stock_symbol, buy_price_db, quantity = trade
+            trade_id, stock_symbol, buy_price_db, quantity,trading_symbol_db,order_id_db = trade
+            print(f"trade {trade}")
             current_trade_id = trade_id
             buy_price = buy_price_db
             quantity_data = quantity
             holding_stock = True
-            order_data = 123
+            trading_symbol = trading_symbol_db
+            instrument_token=int(stock_symbol)
+            order_data = order_id_db
             invested_amount += buy_price * quantity  # Update invested amount
             print(f"Resuming open position for {stock_symbol}: Bought at ₹{buy_price_db}, Quantity: {quantity}")
     else:
@@ -193,13 +204,13 @@ def buy_stock(stock, price):
     global invested_amount, quantity_data, capital, holding_stock,waiting_for_reentry,user_buy_signal,user_sell_signal,buy_price
     quantity = int((capital - invested_amount) // price) or 1
     
-    auto_place_order(quantity,True)
-    # Fetch updated capital before buying
+    auto_place_order_id = '8383_HK_PAPER_TRADE'
+    # auto_place_order_id = auto_place_order(quantity,True)
     cursor.execute('SELECT capital FROM portfolio WHERE id = 1')
     capital = cursor.fetchone()[0]
 
-    cursor.execute('''INSERT INTO trades (stock_symbol, buy_price, quantity, buy_time) VALUES (%s, %s, %s, NOW())''',
-                   (stock, price, quantity))
+    cursor.execute('''INSERT INTO trades (stock_symbol, buy_price, quantity, buy_time,trading_symbol,order_id) VALUES (%s, %s, %s, NOW(),%s,%s)''',
+                   (stock, price, quantity,trading_symbol,auto_place_order_id))
     conn.commit()
     trade_id = cursor.lastrowid
     invested_amount += price * quantity
@@ -220,7 +231,8 @@ def sell_stock(stock_id, price):
     trade = cursor.fetchone()
     if trade:
         buy_price, quantity = trade
-        auto_place_order(quantity,False)
+        auto_place_order_id = '8383_HK_PAPER_TRADE'
+        # auto_place_order_id = auto_place_order(quantity,False)
         profit = (price - buy_price) * quantity
         current_profit += profit
         invested_amount -= buy_price * quantity

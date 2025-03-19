@@ -111,26 +111,30 @@
           <thead class="table-dark">
             <tr>
               <th>ID</th>
-              <th>Stock Symbol</th>
+              <th>Order Id</th>
               <th>Buy Price</th>
               <th>Sell Price</th>
               <th>Quantity</th>
               <th>Buy Time</th>
               <th>Sell Time</th>
               <th>Profit</th>
+              <th>Stock Symbol</th>
+              <th>Trading Symbol</th>
             </tr>
           </thead>
           <tbody id="profit-table">
             {% for trade in trades %}
             <tr>
               <td>{{ trade[0] }}</td>
-              <td>{{ trade[1] }}</td>
+              <td>{{ trade[9] }}</td>
               <td>{{ trade[2] }}</td>
               <td>{{ trade[3] }}</td>
               <td>{{ trade[4] }}</td>
               <td>{{ trade[5] }}</td>
               <td>{{ trade[6] }}</td>
               <td>{{ trade[7] }}</td>
+              <td>{{ trade[1] }}</td>
+              <td>{{ trade[8] }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -395,13 +399,15 @@
           let row = `
                     <tr>
                         <td>${trade.id || "None"}</td>
-                        <td>${trade.stock_symbol || "None"}</td>
+                        <td>${trade.order_id || "None"}</td>
                         <td>${trade.buy_price || "None"}</td>
                         <td>${trade.sell_price || "None"}</td>
                         <td>${trade.quantity || "None"}</td>
                         <td>${trade.buy_time || "None"}</td>
                         <td>${trade.sell_time || "None"}</td>
                         <td>${trade.profit == null ? "None" : trade.profit}</td>
+                        <td>${trade.stock_symbol || "None"}</td>
+                        <td>${trade.trading_symbol || "None"}</td>
                     </tr>
                 `;
           tableBody.append(row);
