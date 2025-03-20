@@ -101,10 +101,10 @@
         </table>
       </div>
       <div class="mb-3 d-flex align-items-center" id="search-bar">
-        <select id="stock-select" class="w-100">
+        <select id="stock-select" class="w-100 p-2">
           <option value="">Select a stock</option>
         </select>
-        <button id="set-button" class="btn btn-sm btn-dark ms-2" style="display: none;">Set</button>
+        <button id="set-button" class="btn btn-sm btn-dark ms-2" style="display: none;">Load</button>
       </div>
       <div class="table-responsive text-center">
         <table class="table table-bordered table-hover">
@@ -173,7 +173,7 @@
               <strong>Declined:</strong> <span id="declined"></span>,
               <strong>Unchanged:</strong> <span id="unchanged"></span>
             </p>
-
+            <hr/>
             <!-- Stock Data -->
             <h5>Top Gainers</h5>
             <table class="table table-bordered">
@@ -183,12 +183,14 @@
                   <th>LTP</th>
                   <th>Change (%)</th>
                   <th>Volume</th>
+                  <th>Value</th>
+                  <th>Volatility</th>
                   <th>Setup</th>
                 </tr>
               </thead>
               <tbody id="gainersTable"></tbody>
             </table>
-
+            <hr/>
             <h5>Top Losers</h5>
             <table class="table table-bordered">
               <thead>
@@ -197,39 +199,15 @@
                   <th>LTP</th>
                   <th>Change (%)</th>
                   <th>Volume</th>
+                  <th>Value</th>
+                  <th>Volatility</th>
                   <th>Setup</th>
                 </tr>
               </thead>
               <tbody id="losersTable"></tbody>
             </table>
-
+            <hr/>
             <h5>Most Active (By Value)</h5>
-            <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Stock</th>
-                  <th>LTP</th>
-                  <th>Value</th>
-                  <th>Setup</th>
-                </tr>
-              </thead>
-              <tbody id="mostActiveValueTable"></tbody>
-            </table>
-
-            <h5>Most Active (By Volume)</h5>
-            <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Stock</th>
-                  <th>LTP</th>
-                  <th>Volume</th>
-                  <th>Setup</th>
-                </tr>
-              </thead>
-              <tbody id="mostActiveVolumeTable"></tbody>
-            </table>
-
-            <h5>Harshil's Best Picks</h5>
             <table class="table table-bordered">
               <thead>
                 <tr>
@@ -237,22 +215,45 @@
                   <th>LTP</th>
                   <th>Change (%)</th>
                   <th>Volume</th>
+                  <th>Value</th>
                   <th>Volatility</th>
                   <th>Setup</th>
                 </tr>
               </thead>
-              <tbody id="harshilBestTable"></tbody>
+              <tbody id="mostActiveValueTable"></tbody>
             </table>
-          </div>
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              data-dismiss="modal"
-              onclick="closeModal()"
-            >
-              Close
-            </button>
+            <hr/>
+            <h5>Most Active (By Volume)</h5>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>LTP</th>
+                  <th>Change (%)</th>
+                  <th>Volume</th>
+                  <th>Value</th>
+                  <th>Volatility</th>
+                  <th>Setup</th>
+                </tr>
+              </thead>
+              <tbody id="mostActiveVolumeTable"></tbody>
+            </table>
+            <hr/>
+            <h5>Best Picks</h5>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Stock</th>
+                  <th>LTP</th>
+                  <th>Change (%)</th>
+                  <th>Volume</th>
+                  <th>Value</th>
+                  <th>Volatility</th>
+                  <th>Setup</th>
+                </tr>
+              </thead>
+              <tbody id="bestTable"></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -285,6 +286,8 @@
                     <td>${stock.LTP}</td>
                     <td>${stock["ChangePrev%"].toFixed(2)}%</td>
                     <td>${stock.Volume.toLocaleString()}</td>
+                    <td>${stock.TradedValue.toLocaleString()}</td>
+                    <td>${stock.Volatility.toFixed(2)}</td>
                     <td><button class="btn btn-sm btn-outline-dark"onclick="userEvent('set_token',${
                       stock.instrument_token
                     },'${stock.tradingsymbol}')">Set</button></td>
@@ -300,6 +303,8 @@
                     <td>${stock.LTP}</td>
                     <td>${stock["ChangePrev%"].toFixed(2)}%</td>
                     <td>${stock.Volume.toLocaleString()}</td>
+                    <td>${stock.TradedValue.toLocaleString()}</td>
+                    <td>${stock.Volatility.toFixed(2)}</td>
                     <td><button class="btn btn-sm btn-outline-dark"onclick="userEvent('set_token',${
                       stock.instrument_token
                     },'${stock.tradingsymbol}')">Set</button></td>
@@ -313,7 +318,10 @@
           mostActiveVolumeHtml += `<tr>
                     <td>${stock.tradingsymbol}</td>
                     <td>${stock.LTP}</td>
+                    <td>${stock["ChangePrev%"].toFixed(2)}%</td>
                     <td>${stock.Volume.toLocaleString()}</td>
+                    <td>${stock.TradedValue.toLocaleString()}</td>
+                    <td>${stock.Volatility.toFixed(2)}</td>
                     <td><button class="btn btn-sm btn-outline-dark"onclick="userEvent('set_token',${
                       stock.instrument_token
                     },'${stock.tradingsymbol}')">Set</button></td>
@@ -326,7 +334,10 @@
           mostActiveValueHtml += `<tr>
                     <td>${stock.tradingsymbol}</td>
                     <td>${stock.LTP}</td>
+                    <td>${stock["ChangePrev%"].toFixed(2)}%</td>
+                    <td>${stock.Volume.toLocaleString()}</td>
                     <td>${stock.TradedValue.toLocaleString()}</td>
+                    <td>${stock.Volatility.toFixed(2)}</td>
                     <td><button class="btn btn-sm btn-outline-dark"onclick="userEvent('set_token',${
                       stock.instrument_token
                     },'${stock.tradingsymbol}')">Set</button></td>
@@ -334,21 +345,22 @@
         });
         $("#mostActiveValueTable").html(mostActiveValueHtml);
 
-        // Populate Harshil's Best Picks Table
-        let harshilBestHtml = "";
-        data.harshil_best_df.forEach((stock) => {
-          harshilBestHtml += `<tr>
+        // Populate Best Picks Table
+        let bestHtml = "";
+        data.best_df.forEach((stock) => {
+          bestHtml += `<tr>
                     <td>${stock.tradingsymbol}</td>
                     <td>${stock.LTP}</td>
                     <td>${stock["ChangePrev%"].toFixed(2)}%</td>
                     <td>${stock.Volume.toLocaleString()}</td>
+                    <td>${stock.TradedValue.toLocaleString()}</td>
                     <td>${stock.Volatility.toFixed(2)}</td>
                     <td><button class="btn btn-sm btn-outline-dark"onclick="userEvent('set_token',${
                       stock.instrument_token
                     },'${stock.tradingsymbol}')">Set</button></td>
                 </tr>`;
         });
-        $("#harshilBestTable").html(harshilBestHtml);
+        $("#bestTable").html(bestHtml);
 
         // Show modal
         $("#stockModal").modal("show");

@@ -10,7 +10,7 @@ load_dotenv(override=True)
 enctoken = os.getenv("ENCTOKEN")
 kite = KiteApp(enctoken=enctoken)
 
-symbols_list = list(pd.read_csv('data.csv')['SYMBOL \n'])
+symbols_list = list(pd.read_csv('data.csv')['SYMBOL'])
 symbols_list.append("NIFTY BANK")
 
 df = pd.DataFrame(kite.instruments("NSE"))
@@ -98,7 +98,7 @@ def analyze_data():
     gainers_df = df.copy()
     gainers_df = gainers_df[gainers_df["segment"]!="INDICES"].reset_index()
     gainers_df = gainers_df.sort_values(by="ChangePrev%",ascending=False).reset_index(drop=True)
-    gainers_df = gainers_df[["tradingsymbol","LTP","ChangePrev%","Volume","instrument_token"]]
+    gainers_df = gainers_df[["tradingsymbol","LTP","ChangePrev%","Volume","Volatility","instrument_token","TradedValue"]]
     gainers_df = gainers_df[:5]
     print('\nGainers -------------------------------------------------------------\n',gainers_df)
 
@@ -106,7 +106,7 @@ def analyze_data():
     losers_df = df.copy()
     losers_df = losers_df[losers_df["segment"]!="INDICES"].reset_index()
     losers_df = losers_df.sort_values(by="ChangePrev%",ascending=True).reset_index(drop=True)
-    losers_df = losers_df[["tradingsymbol","LTP","ChangePrev%","Volume","instrument_token"]]
+    losers_df = losers_df[["tradingsymbol","LTP","ChangePrev%","Volume","Volatility","instrument_token","TradedValue"]]
     losers_df = losers_df[:5]
     print('\nLosers -------------------------------------------------------------\n',losers_df)
 
@@ -114,7 +114,7 @@ def analyze_data():
     most_active_value_df = df.copy()
     most_active_value_df = most_active_value_df[most_active_value_df["segment"]!="INDICES"].reset_index()
     most_active_value_df = most_active_value_df.sort_values(by="TradedValue",ascending=False).reset_index(drop=True)
-    most_active_value_df = most_active_value_df[["tradingsymbol","LTP","ChangePrev%","TradedValue","instrument_token"]]
+    most_active_value_df = most_active_value_df[["tradingsymbol","LTP","ChangePrev%","Volume","Volatility","instrument_token","TradedValue"]]
     most_active_value_df = most_active_value_df[:5]
     print('\nMost active value -------------------------------------------------------------\n',most_active_value_df)
 
@@ -122,19 +122,19 @@ def analyze_data():
     most_active_volume_df = df.copy()
     most_active_volume_df = most_active_volume_df[most_active_volume_df["segment"]!="INDICES"].reset_index()
     most_active_volume_df = most_active_volume_df.sort_values(by="Volume",ascending=False).reset_index(drop=True)
-    most_active_volume_df = most_active_volume_df[["tradingsymbol","LTP","ChangePrev%","Volume","instrument_token"]]
+    most_active_volume_df = most_active_volume_df[["tradingsymbol","LTP","ChangePrev%","Volume","Volatility","instrument_token","TradedValue"]]
     most_active_volume_df = most_active_volume_df[:5]
     print('\nMost active volume -------------------------------------------------------------\n',most_active_volume_df)
 
 
     # Harshil picker stocks
-    harshil_best_df = df.copy()
-    harshil_best_df = harshil_best_df[harshil_best_df["segment"]!="INDICES"].reset_index()
-    harshil_best_df = harshil_best_df.sort_values(by="ChangePrev%",ascending=False).reset_index(drop=True)
-    harshil_best_df = harshil_best_df[:5]
-    harshil_best_df = harshil_best_df.sort_values(by="Volume",ascending=False).reset_index(drop=True)
-    harshil_best_df = harshil_best_df[["tradingsymbol","LTP","ChangePrev%","Volume","Volatility","instrument_token"]]
-    print('\nHarshil picker -------------------------------------------------------------\n',harshil_best_df)
+    best_df = df.copy()
+    best_df = best_df[best_df["segment"]!="INDICES"].reset_index()
+    best_df = best_df.sort_values(by="ChangePrev%",ascending=False).reset_index(drop=True)
+    best_df = best_df[:5]
+    best_df = best_df.sort_values(by="Volume",ascending=False).reset_index(drop=True)
+    best_df = best_df[["tradingsymbol","LTP","ChangePrev%","Volume","Volatility","instrument_token","TradedValue"]]
+    print('\Best picker -------------------------------------------------------------\n',best_df)
 
     result = {
         "statics":{
@@ -147,7 +147,7 @@ def analyze_data():
         "losers_df": losers_df.to_dict(orient="records"),
         "most_active_value_df": most_active_value_df.to_dict(orient="records"),
         "most_active_volume_df": most_active_volume_df.to_dict(orient="records"),
-        "harshil_best_df": harshil_best_df.to_dict(orient="records"),
+        "best_df": best_df.to_dict(orient="records"),
     }
 
     with open("analyze_output.json", "w") as f:
