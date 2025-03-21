@@ -100,6 +100,14 @@
           </tbody>
         </table>
       </div>
+      <div class="table-responsive text-center">
+        <table class="table table-bordered text-sm">
+            <tbody>
+              <tr id="tableHeader"></tr>
+              <tr id="tableRow"></tr>
+            </tbody>
+        </table>
+      </div>
       <div class="mb-3 d-flex align-items-center" id="search-bar">
         <select id="stock-select" class="w-100 p-2">
           <option value="">Select a stock</option>
@@ -455,7 +463,18 @@
           );
         }
       });
+      function updateTable(data) {
+            let headerRow = $("#tableHeader");
+            let valueRow = $("#tableRow");
+            headerRow.empty();
+            valueRow.empty();
+            $.each(data, function (key, value) {
+                headerRow.append(`<td>${key}</td>`);
+                valueRow.append(`<td>${parseFloat(value).toFixed(2)}</td>`);
+            });
+        }
       socket.on("price_tick", function (data) {
+        updateTable(data.latest_tick)
         if ($("#profit-table tr:eq(0)").find("td:eq(3)").text() === "None") {
           var cellValue = parseFloat(
             $("#profit-table tr:eq(0)").find("td:eq(2)").text()

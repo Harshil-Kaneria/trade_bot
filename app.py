@@ -74,6 +74,7 @@ user_stop_reentry = False
 instrument_token = 5097729
 trading_symbol = 'DMART'
 order_data = None
+latest_tick = {}
 
 enctoken = os.getenv("ENCTOKEN")
 kite = KiteApp(enctoken=enctoken)
@@ -256,6 +257,27 @@ def sell_stock(stock_id, price):
 user_id = kite.profile()["user_id"]
 kws = KiteTicker(api_key="your_api_key", access_token=enctoken + "&user_id=" + user_id)
 
+def updateData(i):
+    global latest_tick
+    latest_tick = {  # Store the latest tick data in a dictionary
+        "instrument_token": i["instrument_token"],
+        "LTP": i["last_price"],
+        "Open": i["ohlc"]["open"],
+        "High": i["ohlc"]["high"],
+        "Low": i["ohlc"]["low"],
+        "PrevClose": i["ohlc"]["close"],
+        "Gap%": ((i["ohlc"]["open"] - i["ohlc"]["close"]) / i["ohlc"]["close"]) * 100,
+        "ChangePrev%": ((i["last_price"] - i["ohlc"]["close"]) / i["ohlc"]["close"]) * 100,
+        "ChangeToday%": ((i["last_price"] - i["ohlc"]["open"]) / i["ohlc"]["open"]) * 100,
+        "Volatility": ((i["ohlc"]["high"] - i["ohlc"]["low"]) / i["ohlc"]["open"]) * 100
+    }
+    try:
+        latest_tick["AvgPrice"] = i["average_traded_price"]
+        latest_tick["Volume"] = i["volume_traded"]
+        latest_tick["TradedValue"] = latest_tick["AvgPrice"] * latest_tick["Volume"]
+    except KeyError:
+        pass
+
 def on_ticks(ws, ticks):
     """ Handle live stock price updates """
     global buy_price, holding_stock, current_trade_id, quantity_data, last_sell_price, waiting_for_reentry, invested_amount,user_sell_signal,user_buy_signal,user_auto_buy,user_stop_reentry,current_price
@@ -275,8 +297,9 @@ def on_ticks(ws, ticks):
             waiting_for_reentry = False
 
         current_price = price
+        updateData(tick)
         print(f"Live price - {price} for this {symbol} - {trading_symbol}")
-        socketio.emit('price_tick', {'event': 'tick', 'data': tick,'instrument_token':instrument_token,'trading_symbol':trading_symbol})
+        socketio.emit('price_tick', {'event': 'tick','latest_tick':latest_tick, 'data': tick,'instrument_token':instrument_token,'trading_symbol':trading_symbol})
 
 
 def on_connect(ws, response):
