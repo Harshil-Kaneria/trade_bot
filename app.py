@@ -71,8 +71,8 @@ user_buy_signal = False
 user_sell_signal = False
 user_auto_buy = False
 user_stop_reentry = False
-instrument_token = 5097729
-trading_symbol = 'DMART'
+instrument_token = 352001
+trading_symbol = 'HCC'
 order_data = None
 latest_tick = {}
 
@@ -205,8 +205,8 @@ def buy_stock(stock, price):
     global invested_amount, quantity_data, capital, holding_stock,waiting_for_reentry,user_buy_signal,user_sell_signal,buy_price
     quantity = int((capital - invested_amount) // price) or 1
     
-    # auto_place_order_id = '8383_HK_PAPER_TRADE'
-    auto_place_order_id = auto_place_order(quantity,True)
+    auto_place_order_id = '8383_HK_PAPER_TRADE'
+    # auto_place_order_id = auto_place_order(quantity,True)
     cursor.execute('SELECT capital FROM portfolio WHERE id = 1')
     capital = cursor.fetchone()[0]
 
@@ -232,7 +232,7 @@ def sell_stock(stock_id, price):
     trade = cursor.fetchone()
     if trade:
         buy_price, quantity = trade
-        auto_place_order(quantity,False)
+        # auto_place_order(quantity,False)
         profit = (price - buy_price) * quantity
         current_profit += profit
         invested_amount -= buy_price * quantity
@@ -260,7 +260,6 @@ kws = KiteTicker(api_key="your_api_key", access_token=enctoken + "&user_id=" + u
 def updateData(i):
     global latest_tick
     latest_tick = {  # Store the latest tick data in a dictionary
-        "instrument_token": i["instrument_token"],
         "LTP": i["last_price"],
         "Open": i["ohlc"]["open"],
         "High": i["ohlc"]["high"],
@@ -299,7 +298,7 @@ def on_ticks(ws, ticks):
         current_price = price
         updateData(tick)
         print(f"Live price - {price} for this {symbol} - {trading_symbol}")
-        socketio.emit('price_tick', {'event': 'tick','latest_tick':latest_tick, 'data': tick,'instrument_token':instrument_token,'trading_symbol':trading_symbol})
+        socketio.emit('price_tick', {'event': 'tick','book_profit':book_profit,'book_loss':book_loss,'latest_tick':latest_tick, 'data': tick,'instrument_token':instrument_token,'trading_symbol':trading_symbol})
 
 
 def on_connect(ws, response):

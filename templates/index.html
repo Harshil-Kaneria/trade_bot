@@ -34,18 +34,19 @@
         <table class="table table-bordered">
           <tbody>
             <tr>
-              <td id="trading_symbol">{{ trading_symbol }}</td>
               <td id="capital">Total Capital ₹{{ capital }}</td>
               <td id="invested-amount">
                 Invested Amount ₹{{ invested_amount }}
               </td>
               <td id="total-profit">Total Profit ₹0</td>
               <td id="today-profit">Today's Profit ₹0</td>
+              <td id="loss-calculated-target-price">Loss Target Price ₹0</td>
+              <td id="profit-calculated-target-price">Profit Target Price ₹0</td>
               <td id="price">Price ₹0</td>
               <td id="position">Position ₹0</td>
+              <td id="trading_symbol">{{ trading_symbol }}</td>
             </tr>
             <tr>
-              <td id="instrument_token">{{ instrument_token }}</td>
               <td>
                 <button
                   class="btn btn-sm btn-outline-dark"
@@ -78,6 +79,8 @@
                   Stop Auto Reentry
                 </button>
               </td>
+              <td id="loss-target-price">Loss Target NA</td>
+              <td id="profit-target-price">Profit Target NA</td>
               <td>
                 <button
                   class="btn btn-sm btn-outline-dark d-none"
@@ -96,38 +99,45 @@
                   Sell
                 </button>
               </td>
+              <td id="instrument_token">{{ instrument_token }}</td>
             </tr>
           </tbody>
         </table>
       </div>
       <div class="table-responsive text-center">
         <table class="table table-bordered text-sm">
-            <tbody>
-              <tr id="tableHeader"></tr>
-              <tr id="tableRow"></tr>
-            </tbody>
+          <tbody>
+            <tr class="table-dark" id="tableHeader"></tr>
+            <tr id="tableRow"></tr>
+          </tbody>
         </table>
       </div>
       <div class="mb-3 d-flex align-items-center" id="search-bar">
         <select id="stock-select" class="w-100 p-2">
           <option value="">Select a stock</option>
         </select>
-        <button id="set-button" class="btn btn-sm btn-dark ms-2" style="display: none;">Load</button>
+        <button
+          id="set-button"
+          class="btn btn-sm btn-dark ms-2"
+          style="display: none"
+        >
+          Load
+        </button>
       </div>
       <div class="table-responsive text-center">
         <table class="table table-bordered table-hover">
           <thead class="table-dark">
             <tr>
-              <th>ID</th>
-              <th>Order Id</th>
-              <th>Buy Price</th>
-              <th>Sell Price</th>
-              <th>Quantity</th>
-              <th>Buy Time</th>
-              <th>Sell Time</th>
-              <th>Profit</th>
-              <th>Stock Symbol</th>
-              <th>Trading Symbol</th>
+              <td>ID</td>
+              <td>Order Id</td>
+              <td>Buy Price</td>
+              <td>Sell Price</td>
+              <td>Quantity</td>
+              <td>Buy Time</td>
+              <td>Sell Time</td>
+              <td>Profit</td>
+              <td>Stock Symbol</td>
+              <td>Trading Symbol</td>
             </tr>
           </thead>
           <tbody id="profit-table">
@@ -181,7 +191,7 @@
               <strong>Declined:</strong> <span id="declined"></span>,
               <strong>Unchanged:</strong> <span id="unchanged"></span>
             </p>
-            <hr/>
+            <hr />
             <!-- Stock Data -->
             <h5>Top Gainers</h5>
             <table class="table table-bordered">
@@ -198,7 +208,7 @@
               </thead>
               <tbody id="gainersTable"></tbody>
             </table>
-            <hr/>
+            <hr />
             <h5>Top Losers</h5>
             <table class="table table-bordered">
               <thead>
@@ -214,7 +224,7 @@
               </thead>
               <tbody id="losersTable"></tbody>
             </table>
-            <hr/>
+            <hr />
             <h5>Most Active (By Value)</h5>
             <table class="table table-bordered">
               <thead>
@@ -230,7 +240,7 @@
               </thead>
               <tbody id="mostActiveValueTable"></tbody>
             </table>
-            <hr/>
+            <hr />
             <h5>Most Active (By Volume)</h5>
             <table class="table table-bordered">
               <thead>
@@ -246,7 +256,7 @@
               </thead>
               <tbody id="mostActiveVolumeTable"></tbody>
             </table>
-            <hr/>
+            <hr />
             <h5>Best Picks</h5>
             <table class="table table-bordered">
               <thead>
@@ -464,17 +474,17 @@
         }
       });
       function updateTable(data) {
-            let headerRow = $("#tableHeader");
-            let valueRow = $("#tableRow");
-            headerRow.empty();
-            valueRow.empty();
-            $.each(data, function (key, value) {
-                headerRow.append(`<td>${key}</td>`);
-                valueRow.append(`<td>${parseFloat(value).toFixed(2)}</td>`);
-            });
-        }
+        let headerRow = $("#tableHeader");
+        let valueRow = $("#tableRow");
+        headerRow.empty();
+        valueRow.empty();
+        $.each(data, function (key, value) {
+          headerRow.append(`<td>${key}</td>`);
+          valueRow.append(`<td>${parseFloat(value).toFixed(2)}</td>`);
+        });
+      }
       socket.on("price_tick", function (data) {
-        updateTable(data.latest_tick)
+        updateTable(data.latest_tick);
         if ($("#profit-table tr:eq(0)").find("td:eq(3)").text() === "None") {
           var cellValue = parseFloat(
             $("#profit-table tr:eq(0)").find("td:eq(2)").text()
@@ -498,11 +508,27 @@
                 parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())
               ).toFixed(2)
           );
+          
+          $("#profit-calculated-target-price").text("Profit Target Price ₹"+((cellValue*parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())+data.book_profit)/parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())).toFixed(2))
+          $("#loss-calculated-target-price").text("Loss Target Price ₹"+((cellValue*parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())-data.book_loss)/parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())).toFixed(2))
+        }else{
+          let investedAmountText = $("#capital").text().trim(); 
+          let investedAmount = parseFloat(investedAmountText.replace("Total Capital ₹", "").trim());
+          let lastPrice = data.data.last_price;
+          let profitTarget = data.book_profit;
+          let lossTarget = data.book_loss;
+          let profitTargetPrice = lastPrice + (profitTarget / investedAmount) * lastPrice;
+          let lossTargetPrice = lastPrice - (lossTarget / investedAmount) * lastPrice;
+          $("#profit-calculated-target-price").text("Profit Target Price ₹" + profitTargetPrice.toFixed(2));
+          $("#loss-calculated-target-price").text("Loss Target Price ₹" + lossTargetPrice.toFixed(2));
         }
 
         showButton();
         document.title = data.data.last_price + " Bot";
+
         $("#price").text("Price ₹" + data.data.last_price);
+        $("#profit-target-price").text("Profit Target ₹"+data.book_profit)
+        $("#loss-target-price").text("Loss Target ₹"+data.book_loss)
         $("#instrument_token").text(data.instrument_token);
         $("#trading_symbol").text(data.trading_symbol);
       });
@@ -546,7 +572,7 @@
             delay: 250,
             data: function (params) {
               return {
-                q: params.term, // Pass search term as query parameter
+                q: params.term
               };
             },
             processResults: function (data, params) {
@@ -564,7 +590,7 @@
                 results: filteredResults.map((item) => ({
                   id: item.instrument_token,
                   text: item.tradingsymbol + " - " + item.name,
-                  stockData: item
+                  stockData: item,
                 })),
               };
             },
@@ -572,17 +598,21 @@
           },
         });
       });
-      $('#stock-select').on('select2:select', function (e) {
+      $("#stock-select").on("select2:select", function (e) {
         selectedStock = e.params.data.stockData;
-        $('#set-button').show();
-    });
-    $('#set-button').click(function () {
+        $("#set-button").show();
+      });
+      $("#set-button").click(function () {
         if (selectedStock) {
-            userEvent('set_token', selectedStock.instrument_token, selectedStock.tradingsymbol);
+          userEvent(
+            "set_token",
+            selectedStock.instrument_token,
+            selectedStock.tradingsymbol
+          );
         } else {
-            toastr.error("Please select a stock first.", "Error");
+          toastr.error("Please select a stock first.", "Error");
         }
-    });
+      });
     </script>
   </body>
 </html>
