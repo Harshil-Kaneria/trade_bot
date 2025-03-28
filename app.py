@@ -59,9 +59,9 @@ capital, invested_amount = cursor.fetchone()
 current_profit = 0
 current_price = None
 quantity_data = 0
-book_profit = 350
-book_loss = 550
-reenter_threshold = 200
+book_profit = int(os.getenv("BOOK_PROFIT", 0))
+book_loss = int(os.getenv("BOOK_LOSS", 0))
+reenter_threshold = int(os.getenv("REENTER_THRESHOLD", 0))
 last_sell_price = None
 waiting_for_reentry = False
 holding_stock = False
@@ -71,8 +71,8 @@ user_buy_signal = False
 user_sell_signal = False
 user_auto_buy = False
 user_stop_reentry = False
-instrument_token = 352001
-trading_symbol = 'HCC'
+instrument_token =int(os.getenv("INSTRUMENT_TOKEN", 0))
+trading_symbol = os.getenv("TRADING_SYMBOL")
 order_data = None
 latest_tick = {}
 
@@ -205,8 +205,8 @@ def buy_stock(stock, price):
     global invested_amount, quantity_data, capital, holding_stock,waiting_for_reentry,user_buy_signal,user_sell_signal,buy_price
     quantity = int((capital - invested_amount) // price) or 1
     
-    auto_place_order_id = '8383_HK_PAPER_TRADE'
-    # auto_place_order_id = auto_place_order(quantity,True)
+    # auto_place_order_id = '8383_HK_PAPER_TRADE'
+    auto_place_order_id = auto_place_order(quantity,True)
     cursor.execute('SELECT capital FROM portfolio WHERE id = 1')
     capital = cursor.fetchone()[0]
 
@@ -232,7 +232,7 @@ def sell_stock(stock_id, price):
     trade = cursor.fetchone()
     if trade:
         buy_price, quantity = trade
-        # auto_place_order(quantity,False)
+        auto_place_order(quantity,False)
         profit = (price - buy_price) * quantity
         current_profit += profit
         invested_amount -= buy_price * quantity
