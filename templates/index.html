@@ -40,7 +40,9 @@
               <td id="total-profit">Total Profit ₹0</td>
               <td id="today-profit">Today's Profit ₹0</td>
               <td id="profit-target-price">Profit Target NA</td>
-              <td id="profit-calculated-target-price">Profit Target Price ₹0</td>
+              <td id="profit-calculated-target-price">
+                Profit Target Price ₹0
+              </td>
               <td id="price">Price ₹0</td>
               <td id="position">Position ₹0</td>
               <td id="trading_symbol">{{ trading_symbol }}</td>
@@ -103,6 +105,64 @@
           </tbody>
         </table>
       </div>
+
+      <div class="chart-container">
+        <div class="price-range-chart">
+          <div class="range-bar"></div>
+          <div class="price-marker prev-close" style="left: 0%">
+            <div class="tooltipchart">Prev Close: ₹0</div>
+          </div>
+          <div class="price-marker open" style="left: 0%">
+            <div class="tooltipchart">Open: ₹0</div>
+          </div>
+          <div class="price-marker low" style="left: 0%">
+            <div class="tooltipchart">Low: ₹0</div>
+          </div>
+          <div class="price-marker high" style="left: 0%">
+            <div class="tooltipchart">High: ₹0</div>
+          </div>
+          <div class="price-marker current" style="left: 0%">
+            <div class="tooltipchart">Current: ₹0</div>
+          </div>
+          <div class="price-marker lossTargetPrice" style="left: 0%">
+            <div class="tooltipchart">Loss Target Price: ₹0</div>
+          </div>
+          <div class="price-marker profitTargetPrice" style="left: 0%">
+            <div class="tooltipchart">Profit Target Price: ₹0</div>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-color" style="background: #7b1fa2"></div>
+            <span>Prev Close</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ffa000"></div>
+            <span>Open</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #e53935"></div>
+            <span>Low</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #43a047"></div>
+            <span>High</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #1565c0"></div>
+            <span>Current</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #f88d93"></div>
+            <span>Loss Target Price</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #77d8c8b0"></div>
+            <span>Profit Target Price</span>
+          </div>
+        </div>
+      </div>
+
       <div class="table-responsive text-center">
         <table class="table table-bordered text-sm">
           <tbody>
@@ -383,6 +443,78 @@
         $("#stockModal").modal("show");
       }
 
+      function updatePriceChart(data) {
+        const allPricePoints = [
+          data.PrevClose,
+          data.Open,
+          data.Low,
+          data.High,
+          data.LTP,
+          data.lossTargetPrice,
+          data.profitTargetPrice
+        ];
+
+        const absoluteMin = Math.min(...allPricePoints);
+        const absoluteMax = Math.max(...allPricePoints);
+
+        const dayRange = data.High - data.Low;
+        const rangePadding = dayRange > 0 ? dayRange * 0.1 : absoluteMax * 0.01;
+
+        const min = Math.min(data.Low, absoluteMin) - rangePadding;
+        const max = Math.max(data.High, absoluteMax) + rangePadding;
+
+        const priceRange = max - min;
+        if (priceRange <= 0) return;
+
+        function getPosition(price) {
+          if (price <= min) return 0;
+          if (price >= max) return 100;
+          return ((price - min) / priceRange) * 100;
+        }
+
+        document.querySelector(".prev-close").style.left = `${getPosition(
+          data.PrevClose
+        )}%`;
+        document.querySelector(".open").style.left = `${getPosition(
+          data.Open
+        )}%`;
+        document.querySelector(".low").style.left = `${getPosition(data.Low)}%`;
+        document.querySelector(".high").style.left = `${getPosition(
+          data.High
+        )}%`;
+        document.querySelector(".current").style.left = `${getPosition(
+          data.LTP
+        )}%`;
+        document.querySelector(".lossTargetPrice").style.left = `${getPosition(
+          data.lossTargetPrice
+        )}%`;
+        document.querySelector(".profitTargetPrice").style.left = `${getPosition(
+          data.profitTargetPrice
+        )}%`;
+
+        document.querySelector(
+          ".prev-close .tooltipchart"
+        ).textContent = `Prev Close: ₹${data.PrevClose.toFixed(2)}`;
+        document.querySelector(
+          ".open .tooltipchart"
+        ).textContent = `Open: ₹${data.Open.toFixed(2)}`;
+        document.querySelector(
+          ".low .tooltipchart"
+        ).textContent = `Low: ₹${data.Low.toFixed(2)}`;
+        document.querySelector(
+          ".high .tooltipchart"
+        ).textContent = `High: ₹${data.High.toFixed(2)}`;
+        document.querySelector(
+          ".current .tooltipchart"
+        ).textContent = `LTP: ₹${data.LTP.toFixed(2)}`;
+        document.querySelector(
+          ".lossTargetPrice .tooltipchart"
+        ).textContent = `Loss Target Price: ₹${data.lossTargetPrice.toFixed(2)}`;
+        document.querySelector(
+          ".profitTargetPrice .tooltipchart"
+        ).textContent = `Profit Target Price: ₹${data.profitTargetPrice.toFixed(2)}`;
+      }
+
       function userEvent(event, instrument_token = "", trading_symbol = "") {
         fetch("/api/user-event", {
           method: "POST",
@@ -484,6 +616,13 @@
       }
       socket.on("price_tick", function (data) {
         updateTable(data.latest_tick);
+        let sendData = {
+          PrevClose: data.latest_tick.PrevClose - 5 || 0,
+          Open: data.latest_tick.Open || 0,
+          Low: data.latest_tick.Low || 0,
+          High: data.latest_tick.High || 0,
+          LTP: data.latest_tick.LTP,
+        };
         if ($("#profit-table tr:eq(0)").find("td:eq(3)").text() === "None") {
           var cellValue = parseFloat(
             $("#profit-table tr:eq(0)").find("td:eq(2)").text()
@@ -507,27 +646,60 @@
                 parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())
               ).toFixed(2)
           );
-          
-          $("#profit-calculated-target-price").text("Profit Target Price ₹"+((cellValue*parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())+data.book_profit)/parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())).toFixed(2))
-          $("#loss-calculated-target-price").text("Loss Target Price ₹"+((cellValue*parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())-data.book_loss)/parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())).toFixed(2))
-        }else{
-          let investedAmountText = $("#capital").text().trim(); 
-          let investedAmount = parseFloat(investedAmountText.replace("Total Capital ₹", "").trim());
+
+          let profitTargetPrice = (
+            (cellValue *
+              parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text()) +
+              data.book_profit) /
+            parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())
+          ).toFixed(2);
+          let lossTargetPrice = (
+            (cellValue *
+              parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text()) -
+              data.book_loss) /
+            parseFloat($("#profit-table tr:eq(0)").find("td:eq(4)").text())
+          ).toFixed(2);
+
+          $("#profit-calculated-target-price").text(
+            "Profit Target Price ₹" + profitTargetPrice
+          );
+          $("#loss-calculated-target-price").text(
+            "Loss Target Price ₹" + lossTargetPrice
+          );
+
+          sendData.profitTargetPrice = parseFloat(profitTargetPrice.toFixed(2))
+          sendData.lossTargetPrice = parseFloat(lossTargetPrice.toFixed(2))
+        } else {
+          let investedAmountText = $("#capital").text().trim();
+          let investedAmount = parseFloat(
+            investedAmountText.replace("Total Capital ₹", "").trim()
+          );
           let lastPrice = data.data.last_price;
           let profitTarget = data.book_profit;
           let lossTarget = data.book_loss;
-          let profitTargetPrice = lastPrice + (profitTarget / investedAmount) * lastPrice;
-          let lossTargetPrice = lastPrice - (lossTarget / investedAmount) * lastPrice;
-          $("#profit-calculated-target-price").text("Profit Target Price ₹" + profitTargetPrice.toFixed(2));
-          $("#loss-calculated-target-price").text("Loss Target Price ₹" + lossTargetPrice.toFixed(2));
+          let profitTargetPrice =
+            lastPrice + (profitTarget / investedAmount) * lastPrice;
+          let lossTargetPrice =
+            lastPrice - (lossTarget / investedAmount) * lastPrice;
+          $("#profit-calculated-target-price").text(
+            "Profit Target Price ₹" + profitTargetPrice.toFixed(2)
+          );
+          $("#loss-calculated-target-price").text(
+            "Loss Target Price ₹" + lossTargetPrice.toFixed(2)
+          );
+
+          sendData.profitTargetPrice = parseFloat(profitTargetPrice.toFixed(2))
+          sendData.lossTargetPrice = parseFloat(lossTargetPrice.toFixed(2))
         }
+
+        updatePriceChart(sendData);
 
         showButton();
         document.title = data.data.last_price + " Bot";
 
         $("#price").text("Price ₹" + data.data.last_price);
-        $("#profit-target-price").text("Profit Target ₹"+data.book_profit)
-        $("#loss-target-price").text("Loss Target ₹"+data.book_loss)
+        $("#profit-target-price").text("Profit Target ₹" + data.book_profit);
+        $("#loss-target-price").text("Loss Target ₹" + data.book_loss);
         $("#instrument_token").text(data.instrument_token);
         $("#trading_symbol").text(data.trading_symbol);
       });
@@ -571,7 +743,7 @@
             delay: 250,
             data: function (params) {
               return {
-                q: params.term
+                q: params.term,
               };
             },
             processResults: function (data, params) {
