@@ -45,7 +45,7 @@
               </td>
               <td id="price">Price ₹0</td>
               <td id="position">Position ₹0</td>
-              <td id="trading_symbol">{{ trading_symbol }}</td>
+              <td id="trading_symbol" style="cursor: pointer;">{{ trading_symbol }}</td>
             </tr>
             <tr>
               <td>
@@ -509,10 +509,10 @@
         ).textContent = `LTP: ₹${data.LTP.toFixed(2)}`;
         document.querySelector(
           ".lossTargetPrice .tooltipchart"
-        ).textContent = `Loss Target Price: ₹${data.lossTargetPrice.toFixed(2)}`;
+        ).textContent = `Loss Target Price: ₹${data.lossTargetPrice}`;
         document.querySelector(
           ".profitTargetPrice .tooltipchart"
-        ).textContent = `Profit Target Price: ₹${data.profitTargetPrice.toFixed(2)}`;
+        ).textContent = `Profit Target Price: ₹${data.profitTargetPrice}`;
       }
 
       function userEvent(event, instrument_token = "", trading_symbol = "") {
@@ -667,8 +667,8 @@
             "Loss Target Price ₹" + lossTargetPrice
           );
 
-          sendData.profitTargetPrice = parseFloat(profitTargetPrice.toFixed(2))
-          sendData.lossTargetPrice = parseFloat(lossTargetPrice.toFixed(2))
+          sendData.profitTargetPrice = parseFloat(profitTargetPrice).toFixed(2)
+          sendData.lossTargetPrice = parseFloat(lossTargetPrice).toFixed(2)
         } else {
           let investedAmountText = $("#capital").text().trim();
           let investedAmount = parseFloat(
@@ -785,5 +785,15 @@
         }
       });
     </script>
+    <script>
+      $(document).ready(function() {
+          $("#trading_symbol").on("click", function() {
+              let symbol = $(this).text().trim();
+              let encodedSymbol = encodeURIComponent(symbol);
+              let url = `https://www.nseindia.com/get-quotes/equity?symbol=${encodedSymbol}`;
+              window.open(url, '_blank');
+          });
+      });
+      </script>
   </body>
 </html>

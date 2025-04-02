@@ -1,250 +1,250 @@
 {
     "statics": {
-        "advanced": 168,
-        "declined": 331,
+        "advanced": 365,
+        "declined": 134,
         "unchanged": 0
     },
     "index_df": [
         {
             "tradingsymbol": "NIFTY BANK",
-            "LTP": 51564.85,
-            "ChangePrev%": -0.021327811369080685,
+            "LTP": 51210.3,
+            "ChangePrev%": 0.7531356057252528,
             "instrument_token": 260105
         }
     ],
     "gainers_df": [
         {
-            "tradingsymbol": "BSE",
-            "LTP": 5438.0,
-            "ChangePrev%": 16.08867825845634,
-            "Volume": 0,
-            "Volatility": 10.687999999999994,
-            "instrument_token": 5013761,
-            "TradedValue": 0.0
+            "tradingsymbol": "DBREALTY",
+            "LTP": 170.9,
+            "ChangePrev%": 11.611807732497388,
+            "Volume": 17617544,
+            "Volatility": 15.318516604212434,
+            "instrument_token": 4639745,
+            "TradedValue": 2956400058.64
         },
         {
-            "tradingsymbol": "CARBORUNIV",
-            "LTP": 1029.8,
-            "ChangePrev%": 6.858981010687963,
-            "Volume": 0,
-            "Volatility": 8.153893254413713,
-            "instrument_token": 152321,
-            "TradedValue": 0.0
+            "tradingsymbol": "TATACONSUM",
+            "LTP": 1065.15,
+            "ChangePrev%": 7.346938775510213,
+            "Volume": 6372645,
+            "Volatility": 5.712180746561895,
+            "instrument_token": 878593,
+            "TradedValue": 6730915101.900001
         },
         {
-            "tradingsymbol": "ABREL",
-            "LTP": 2000.0,
-            "ChangePrev%": 6.41977279378509,
-            "Volume": 0,
-            "Volatility": 8.142466904811936,
-            "instrument_token": 160001,
-            "TradedValue": 0.0
+            "tradingsymbol": "KALYANKJIL",
+            "LTP": 490.45,
+            "ChangePrev%": 7.073463595677322,
+            "Volume": 13143476,
+            "Volatility": 7.714037375054325,
+            "instrument_token": 756481,
+            "TradedValue": 6339887083.360001
         },
         {
-            "tradingsymbol": "JSWHL",
-            "LTP": 22989.85,
-            "ChangePrev%": 4.999977163840311,
-            "Volume": 0,
-            "Volatility": 8.403469750889673,
-            "instrument_token": 3041281,
-            "TradedValue": 0.0
+            "tradingsymbol": "SHYAMMETL",
+            "LTP": 908.45,
+            "ChangePrev%": 5.572341661824526,
+            "Volume": 1530130,
+            "Volatility": 6.324854568267371,
+            "instrument_token": 1201409,
+            "TradedValue": 1366972238.1
         },
         {
-            "tradingsymbol": "ASTERDM",
-            "LTP": 476.0,
-            "ChangePrev%": 4.996139847799707,
-            "Volume": 0,
-            "Volatility": 11.471266893747938,
-            "instrument_token": 386049,
-            "TradedValue": 0.0
+            "tradingsymbol": "VMM",
+            "LTP": 109.33,
+            "ChangePrev%": 5.398631061409423,
+            "Volume": 13230360,
+            "Volatility": 5.8642568736781335,
+            "instrument_token": 7160065,
+            "TradedValue": 1411547108.3999999
         }
     ],
     "losers_df": [
         {
-            "tradingsymbol": "AEGISLOG",
-            "LTP": 798.95,
-            "ChangePrev%": -11.483492133835584,
-            "Volume": 0,
-            "Volatility": 10.223280063470467,
-            "instrument_token": 10241,
-            "TradedValue": 0.0
+            "tradingsymbol": "CENTRALBK",
+            "LTP": 37.58,
+            "ChangePrev%": -9.029290728637143,
+            "Volume": 41572090,
+            "Volatility": 8.053347012054374,
+            "instrument_token": 3812865,
+            "TradedValue": 1556043328.7
         },
         {
-            "tradingsymbol": "IOB",
-            "LTP": 38.9,
-            "ChangePrev%": -6.826347305389224,
-            "Volume": 0,
-            "Volatility": 3.9999999999999876,
-            "instrument_token": 2393089,
-            "TradedValue": 0.0
+            "tradingsymbol": "FORTIS",
+            "LTP": 658.4,
+            "ChangePrev%": -4.392652290713715,
+            "Volume": 1148432,
+            "Volatility": 5.002552322613588,
+            "instrument_token": 3735553,
+            "TradedValue": 760411280.16
         },
         {
-            "tradingsymbol": "FIRSTCRY",
-            "LTP": 365.05,
-            "ChangePrev%": -6.048127654098572,
-            "Volume": 0,
-            "Volatility": 6.81672848190305,
-            "instrument_token": 6352385,
-            "TradedValue": 0.0
+            "tradingsymbol": "BEL",
+            "LTP": 281.3,
+            "ChangePrev%": -3.664383561643832,
+            "Volume": 39056387,
+            "Volatility": 5.6226284925836545,
+            "instrument_token": 98049,
+            "TradedValue": 10901809303.31
         },
         {
-            "tradingsymbol": "FSL",
-            "LTP": 339.0,
-            "ChangePrev%": -4.788653279033847,
-            "Volume": 0,
-            "Volatility": 6.087824351297412,
-            "instrument_token": 3661825,
-            "TradedValue": 0.0
+            "tradingsymbol": "WAAREEENER",
+            "LTP": 2301.9,
+            "ChangePrev%": -3.275416517847756,
+            "Volume": 610584,
+            "Volatility": 2.131199999999992,
+            "instrument_token": 6632193,
+            "TradedValue": 1409349988.8
         },
         {
-            "tradingsymbol": "INTELLECT",
-            "LTP": 692.6,
-            "ChangePrev%": -4.685887290992906,
-            "Volume": 0,
-            "Volatility": 6.176490817800396,
-            "instrument_token": 1517057,
-            "TradedValue": 0.0
+            "tradingsymbol": "RHIM",
+            "LTP": 516.6,
+            "ChangePrev%": -3.194977981823284,
+            "Volume": 323564,
+            "Volatility": 3.2007575757575712,
+            "instrument_token": 7977729,
+            "TradedValue": 167302001.83999997
         }
     ],
     "most_active_value_df": [
         {
-            "tradingsymbol": "AARTIIND",
-            "LTP": 389.0,
-            "ChangePrev%": -1.643489254108723,
-            "Volume": 0,
-            "Volatility": 4.860759493670884,
-            "instrument_token": 1793,
-            "TradedValue": 0.0
+            "tradingsymbol": "BSE",
+            "LTP": 5585.0,
+            "ChangePrev%": 2.1770947676545918,
+            "Volume": 3257891,
+            "Volatility": 4.088498811482911,
+            "instrument_token": 5013761,
+            "TradedValue": 18117425061.19
         },
         {
-            "tradingsymbol": "ELECON",
-            "LTP": 444.5,
-            "ChangePrev%": -3.5791757049891544,
-            "Volume": 0,
-            "Volatility": 5.546632401756072,
-            "instrument_token": 3492609,
-            "TradedValue": 0.0
+            "tradingsymbol": "BEL",
+            "LTP": 281.3,
+            "ChangePrev%": -3.664383561643832,
+            "Volume": 39056387,
+            "Volatility": 5.6226284925836545,
+            "instrument_token": 98049,
+            "TradedValue": 10901809303.31
         },
         {
-            "tradingsymbol": "REDINGTON",
-            "LTP": 243.45,
-            "ChangePrev%": -0.05337055587487637,
-            "Volume": 0,
-            "Volatility": 2.79175257731958,
-            "instrument_token": 3649281,
-            "TradedValue": 0.0
+            "tradingsymbol": "INDUSINDBK",
+            "LTP": 703.35,
+            "ChangePrev%": 3.02475465065182,
+            "Volume": 11925702,
+            "Volatility": 4.892339241247982,
+            "instrument_token": 1346049,
+            "TradedValue": 8257594578.839999
         },
         {
-            "tradingsymbol": "TIMKEN",
-            "LTP": 2750.0,
-            "ChangePrev%": 1.4928678193795948,
-            "Volume": 0,
-            "Volatility": 10.41743627632065,
-            "instrument_token": 3634689,
-            "TradedValue": 0.0
+            "tradingsymbol": "HAL",
+            "LTP": 4233.0,
+            "ChangePrev%": 0.22018609276227438,
+            "Volume": 1720610,
+            "Volatility": 2.1797593772115977,
+            "instrument_token": 589569,
+            "TradedValue": 7233323997.3
         },
         {
-            "tradingsymbol": "NSLNISP",
-            "LTP": 33.32,
-            "ChangePrev%": -1.0688836104513049,
-            "Volume": 0,
-            "Volatility": 4.673173617273012,
-            "instrument_token": 3630081,
-            "TradedValue": 0.0
+            "tradingsymbol": "RELIANCE",
+            "LTP": 1253.95,
+            "ChangePrev%": 0.10777582628134573,
+            "Volume": 5730152,
+            "Volatility": 0.933830307402498,
+            "instrument_token": 738561,
+            "TradedValue": 7167159518.559999
         }
     ],
     "most_active_volume_df": [
         {
-            "tradingsymbol": "AARTIIND",
-            "LTP": 389.0,
-            "ChangePrev%": -1.643489254108723,
-            "Volume": 0,
-            "Volatility": 4.860759493670884,
-            "instrument_token": 1793,
-            "TradedValue": 0.0
+            "tradingsymbol": "IDEA",
+            "LTP": 8.18,
+            "ChangePrev%": 0.9876543209876552,
+            "Volume": 662518019,
+            "Volatility": 4.8134777376654565,
+            "instrument_token": 3677697,
+            "TradedValue": 5366395953.9
         },
         {
-            "tradingsymbol": "ELECON",
-            "LTP": 444.5,
-            "ChangePrev%": -3.5791757049891544,
-            "Volume": 0,
-            "Volatility": 5.546632401756072,
-            "instrument_token": 3492609,
-            "TradedValue": 0.0
+            "tradingsymbol": "CENTRALBK",
+            "LTP": 37.58,
+            "ChangePrev%": -9.029290728637143,
+            "Volume": 41572090,
+            "Volatility": 8.053347012054374,
+            "instrument_token": 3812865,
+            "TradedValue": 1556043328.7
         },
         {
-            "tradingsymbol": "REDINGTON",
-            "LTP": 243.45,
-            "ChangePrev%": -0.05337055587487637,
-            "Volume": 0,
-            "Volatility": 2.79175257731958,
-            "instrument_token": 3649281,
-            "TradedValue": 0.0
+            "tradingsymbol": "YESBANK",
+            "LTP": 17.38,
+            "ChangePrev%": 0.28851702250433187,
+            "Volume": 41407515,
+            "Volatility": 2.267441860465099,
+            "instrument_token": 3050241,
+            "TradedValue": 712209258.0
         },
         {
-            "tradingsymbol": "TIMKEN",
-            "LTP": 2750.0,
-            "ChangePrev%": 1.4928678193795948,
-            "Volume": 0,
-            "Volatility": 10.41743627632065,
-            "instrument_token": 3634689,
-            "TradedValue": 0.0
+            "tradingsymbol": "BEL",
+            "LTP": 281.3,
+            "ChangePrev%": -3.664383561643832,
+            "Volume": 39056387,
+            "Volatility": 5.6226284925836545,
+            "instrument_token": 98049,
+            "TradedValue": 10901809303.31
         },
         {
-            "tradingsymbol": "NSLNISP",
-            "LTP": 33.32,
-            "ChangePrev%": -1.0688836104513049,
-            "Volume": 0,
-            "Volatility": 4.673173617273012,
-            "instrument_token": 3630081,
-            "TradedValue": 0.0
+            "tradingsymbol": "IDFCFIRSTB",
+            "LTP": 57.06,
+            "ChangePrev%": -0.1924086059121907,
+            "Volume": 29067765,
+            "Volatility": 2.622045885802995,
+            "instrument_token": 2863105,
+            "TradedValue": 1654537183.8
         }
     ],
     "best_df": [
         {
-            "tradingsymbol": "BSE",
-            "LTP": 5438.0,
-            "ChangePrev%": 16.08867825845634,
-            "Volume": 0,
-            "Volatility": 10.687999999999994,
-            "instrument_token": 5013761,
-            "TradedValue": 0.0
+            "tradingsymbol": "DBREALTY",
+            "LTP": 170.9,
+            "ChangePrev%": 11.611807732497388,
+            "Volume": 17617544,
+            "Volatility": 15.318516604212434,
+            "instrument_token": 4639745,
+            "TradedValue": 2956400058.64
         },
         {
-            "tradingsymbol": "CARBORUNIV",
-            "LTP": 1029.8,
-            "ChangePrev%": 6.858981010687963,
-            "Volume": 0,
-            "Volatility": 8.153893254413713,
-            "instrument_token": 152321,
-            "TradedValue": 0.0
+            "tradingsymbol": "VMM",
+            "LTP": 109.33,
+            "ChangePrev%": 5.398631061409423,
+            "Volume": 13230360,
+            "Volatility": 5.8642568736781335,
+            "instrument_token": 7160065,
+            "TradedValue": 1411547108.3999999
         },
         {
-            "tradingsymbol": "ABREL",
-            "LTP": 2000.0,
-            "ChangePrev%": 6.41977279378509,
-            "Volume": 0,
-            "Volatility": 8.142466904811936,
-            "instrument_token": 160001,
-            "TradedValue": 0.0
+            "tradingsymbol": "KALYANKJIL",
+            "LTP": 490.45,
+            "ChangePrev%": 7.073463595677322,
+            "Volume": 13143476,
+            "Volatility": 7.714037375054325,
+            "instrument_token": 756481,
+            "TradedValue": 6339887083.360001
         },
         {
-            "tradingsymbol": "JSWHL",
-            "LTP": 22989.85,
-            "ChangePrev%": 4.999977163840311,
-            "Volume": 0,
-            "Volatility": 8.403469750889673,
-            "instrument_token": 3041281,
-            "TradedValue": 0.0
+            "tradingsymbol": "TATACONSUM",
+            "LTP": 1065.15,
+            "ChangePrev%": 7.346938775510213,
+            "Volume": 6372645,
+            "Volatility": 5.712180746561895,
+            "instrument_token": 878593,
+            "TradedValue": 6730915101.900001
         },
         {
-            "tradingsymbol": "ASTERDM",
-            "LTP": 476.0,
-            "ChangePrev%": 4.996139847799707,
-            "Volume": 0,
-            "Volatility": 11.471266893747938,
-            "instrument_token": 386049,
-            "TradedValue": 0.0
+            "tradingsymbol": "SHYAMMETL",
+            "LTP": 908.45,
+            "ChangePrev%": 5.572341661824526,
+            "Volume": 1530130,
+            "Volatility": 6.324854568267371,
+            "instrument_token": 1201409,
+            "TradedValue": 1366972238.1
         }
     ]
 }

@@ -92,44 +92,44 @@ def get_analyze_data():
         print("No analysis file found. Run `run_analyze()` first.")
         return None
 
-# def auto_place_order(quantity=1,isBuy=True,price=None):
-#     global trading_symbol,order_data
-#     if isBuy:
-#         order_data = kite.place_order(variety=kite.VARIETY_REGULAR,
-#             exchange=kite.EXCHANGE_NSE,
-#             tradingsymbol=trading_symbol,
-#             transaction_type=kite.TRANSACTION_TYPE_BUY,
-#             quantity=quantity,
-#             product=kite.PRODUCT_MIS,
-#             order_type=kite.ORDER_TYPE_MARKET,
-#             price=price,
-#             validity=None,
-#             disclosed_quantity=None,
-#             trigger_price=None,
-#             squareoff=None,
-#             stoploss=None,
-#             trailing_stoploss=None,
-#             tag="HK"
-#         )
-#     elif order_data is not None:
-#         kite.place_order(variety=kite.VARIETY_REGULAR,
-#             exchange=kite.EXCHANGE_NSE,
-#             tradingsymbol=trading_symbol,
-#             transaction_type=kite.TRANSACTION_TYPE_SELL,
-#             quantity=quantity,
-#             product=kite.PRODUCT_MIS,
-#             order_type=kite.ORDER_TYPE_MARKET,
-#             price=price,
-#             validity=None,
-#             disclosed_quantity=None,
-#             trigger_price=None,
-#             squareoff=None,
-#             stoploss=None,
-#             trailing_stoploss=None,
-#             tag="HK"
-#         )
-#         order_data = None
-#     return order_data
+def auto_place_order(quantity=1,isBuy=True,price=None):
+    global trading_symbol,order_data
+    if isBuy:
+        order_data = kite.place_order(variety=kite.VARIETY_REGULAR,
+            exchange=kite.EXCHANGE_NSE,
+            tradingsymbol=trading_symbol,
+            transaction_type=kite.TRANSACTION_TYPE_BUY,
+            quantity=quantity,
+            product=kite.PRODUCT_MIS,
+            order_type=kite.ORDER_TYPE_MARKET,
+            price=price,
+            validity=None,
+            disclosed_quantity=None,
+            trigger_price=None,
+            squareoff=None,
+            stoploss=None,
+            trailing_stoploss=None,
+            tag="HK"
+        )
+    elif order_data is not None:
+        kite.place_order(variety=kite.VARIETY_REGULAR,
+            exchange=kite.EXCHANGE_NSE,
+            tradingsymbol=trading_symbol,
+            transaction_type=kite.TRANSACTION_TYPE_SELL,
+            quantity=quantity,
+            product=kite.PRODUCT_MIS,
+            order_type=kite.ORDER_TYPE_MARKET,
+            price=price,
+            validity=None,
+            disclosed_quantity=None,
+            trigger_price=None,
+            squareoff=None,
+            stoploss=None,
+            trailing_stoploss=None,
+            tag="HK"
+        )
+        order_data = None
+    return order_data
 
 def rec_db():
     """ Fetch trade history and capital, return JSON-friendly data """
@@ -205,8 +205,8 @@ def buy_stock(stock, price):
     global invested_amount, quantity_data, capital, holding_stock,waiting_for_reentry,user_buy_signal,user_sell_signal,buy_price
     quantity = int((capital - invested_amount) // price) or 1
     
-    auto_place_order_id = '8383_HK_PAPER_TRADE'
-    # auto_place_order_id = auto_place_order(quantity,True)
+    # auto_place_order_id = '8383_HK_PAPER_TRADE'
+    auto_place_order_id = auto_place_order(quantity,True)
     cursor.execute('SELECT capital FROM portfolio WHERE id = 1')
     capital = cursor.fetchone()[0]
 
@@ -232,7 +232,7 @@ def sell_stock(stock_id, price):
     trade = cursor.fetchone()
     if trade:
         buy_price, quantity = trade
-        # auto_place_order(quantity,False)
+        auto_place_order(quantity,False)
         profit = (price - buy_price) * quantity
         current_profit += profit
         invested_amount -= buy_price * quantity

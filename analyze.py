@@ -9,7 +9,7 @@ import json
 load_dotenv(override=True)
 enctoken = os.getenv("ENCTOKEN")
 kite = KiteApp(enctoken=enctoken)
-top_n = 5
+top_n = int(os.getenv("TOP_N", 5))
 
 symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
 symbols_list.append("NIFTY BANK")
