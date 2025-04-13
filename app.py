@@ -280,6 +280,17 @@ def updateData(i):
     except KeyError:
         pass
 
+def serialize_datetime(obj):
+    """Recursively convert datetime objects to strings"""
+    if isinstance(obj, dict):
+        return {k: serialize_datetime(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize_datetime(i) for i in obj]
+    elif isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    else:
+        return obj
+
 def on_ticks(ws, ticks):
     """ Handle live stock price updates """
     global buy_price, holding_stock, current_trade_id, quantity_data, last_sell_price, waiting_for_reentry, invested_amount,user_sell_signal,user_buy_signal,user_auto_buy,user_stop_reentry,current_price
@@ -301,13 +312,14 @@ def on_ticks(ws, ticks):
         current_price = price
         updateData(tick)
         print(f"Live price - {price} for this {symbol} - {trading_symbol}")
-        socketio.emit('price_tick', {'event': 'tick','book_profit':book_profit,'book_loss':book_loss,'latest_tick':latest_tick, 'data': tick,'instrument_token':instrument_token,'trading_symbol':trading_symbol})
+        socketio.emit('price_tick', {'event': 'tick','book_profit':book_profit,'book_loss':book_loss,'latest_tick':latest_tick, 'data': serialize_datetime(tick),'instrument_token':instrument_token,'trading_symbol':trading_symbol})
 
 
 def on_connect(ws, response):
     print("WebSocket: Connected")
     ws.subscribe([instrument_token])
-    ws.set_mode(ws.MODE_QUOTE, [instrument_token])
+    ws.set_mode(ws.MODE_FULL, [instrument_token])
+    # ws.set_mode(ws.MODE_QUOTE, [instrument_token])
 
 def on_close(ws, code, reason):
     print(f"WebSocket closed with code: {code}, reason: {reason}")

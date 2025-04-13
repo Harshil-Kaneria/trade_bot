@@ -11,7 +11,7 @@ enctoken = os.getenv("ENCTOKEN")
 kite = KiteApp(enctoken=enctoken)
 top_n = int(os.getenv("TOP_N", 5))
 
-symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
+symbols_list = list(pd.read_csv('data.csv')['SYMBOL'])
 symbols_list.append("NIFTY BANK")
 
 df = pd.DataFrame(kite.instruments("NSE"))

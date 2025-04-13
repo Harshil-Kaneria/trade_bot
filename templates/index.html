@@ -45,7 +45,10 @@
               </td>
               <td id="price">Price ₹0</td>
               <td id="position">Position ₹0</td>
-              <td id="trading_symbol" style="cursor: pointer;">{{ trading_symbol }}</td>
+              <td id="est-price">EST Price ₹0</td>
+              <td id="trading_symbol" style="cursor: pointer">
+                {{ trading_symbol }}
+              </td>
             </tr>
             <tr>
               <td>
@@ -100,6 +103,7 @@
                   Sell
                 </button>
               </td>
+              <td id="est-message">-</td>
               <td id="instrument_token">{{ instrument_token }}</td>
             </tr>
           </tbody>
@@ -451,7 +455,7 @@
           data.High,
           data.LTP,
           data.lossTargetPrice,
-          data.profitTargetPrice
+          data.profitTargetPrice,
         ];
 
         const absoluteMin = Math.min(...allPricePoints);
@@ -488,9 +492,9 @@
         document.querySelector(".lossTargetPrice").style.left = `${getPosition(
           data.lossTargetPrice
         )}%`;
-        document.querySelector(".profitTargetPrice").style.left = `${getPosition(
-          data.profitTargetPrice
-        )}%`;
+        document.querySelector(
+          ".profitTargetPrice"
+        ).style.left = `${getPosition(data.profitTargetPrice)}%`;
 
         document.querySelector(
           ".prev-close .tooltipchart"
@@ -604,6 +608,58 @@
           );
         }
       });
+      function analyzeOrderBook(data) {
+        const buyPressure = data.depth.buy.reduce((score, level) => {
+          const weight = 1 / (Math.abs(data.last_price - level.price) + 0.01);
+          return score + level.quantity * weight;
+        }, 0);
+
+        const sellPressure = data.depth.sell.reduce((score, level) => {
+          const weight = 1 / (Math.abs(data.last_price - level.price) + 0.01);
+          return score + level.quantity * weight;
+        }, 0);
+
+        const score = buyPressure - sellPressure;
+
+        // Estimate upcoming price
+        const buyWeighted = data.depth.buy.reduce(
+          (acc, level) => {
+            return {
+              qty: acc.qty + level.quantity,
+              val: acc.val + level.price * level.quantity,
+            };
+          },
+          { qty: 0, val: 0 }
+        );
+
+        const sellWeighted = data.depth.sell.reduce(
+          (acc, level) => {
+            return {
+              qty: acc.qty + level.quantity,
+              val: acc.val + level.price * level.quantity,
+            };
+          },
+          { qty: 0, val: 0 }
+        );
+
+        const buyAvg = buyWeighted.qty ? buyWeighted.val / buyWeighted.qty : 0;
+        const sellAvg = sellWeighted.qty
+          ? sellWeighted.val / sellWeighted.qty
+          : 0;
+
+        const estimatedPrice = ((buyAvg + sellAvg) / 2).toFixed(2);
+
+        let signal = "Indecisive → Watch Carefully";
+        if (score > 500) signal = "Likely Up → Buy Now";
+        else if (score < -500) signal = "Likely Down → Wait for Dip";
+
+        return {
+          signal,
+          estimatedPrice: parseFloat(estimatedPrice),
+          currentPrice: data.last_price.toFixed(2),
+          score: Math.round(score),
+        };
+      }
       function updateTable(data) {
         let headerRow = $("#tableHeader");
         let valueRow = $("#tableRow");
@@ -615,6 +671,13 @@
         });
       }
       socket.on("price_tick", function (data) {
+        if(data?.data?.mode=="full"){
+          const analysis = analyzeOrderBook(data.data);
+          $("#est-price").text("EST Price ₹" + analysis.estimatedPrice);
+          $("#est-message").text(analysis.signal);
+        }
+
+
         updateTable(data.latest_tick);
         let sendData = {
           PrevClose: data.latest_tick.PrevClose - 5 || 0,
@@ -667,8 +730,8 @@
             "Loss Target Price ₹" + lossTargetPrice
           );
 
-          sendData.profitTargetPrice = parseFloat(profitTargetPrice).toFixed(2)
-          sendData.lossTargetPrice = parseFloat(lossTargetPrice).toFixed(2)
+          sendData.profitTargetPrice = parseFloat(profitTargetPrice).toFixed(2);
+          sendData.lossTargetPrice = parseFloat(lossTargetPrice).toFixed(2);
         } else {
           let investedAmountText = $("#capital").text().trim();
           let investedAmount = parseFloat(
@@ -688,8 +751,8 @@
             "Loss Target Price ₹" + lossTargetPrice.toFixed(2)
           );
 
-          sendData.profitTargetPrice = parseFloat(profitTargetPrice.toFixed(2))
-          sendData.lossTargetPrice = parseFloat(lossTargetPrice.toFixed(2))
+          sendData.profitTargetPrice = parseFloat(profitTargetPrice.toFixed(2));
+          sendData.lossTargetPrice = parseFloat(lossTargetPrice.toFixed(2));
         }
 
         updatePriceChart(sendData);
@@ -786,14 +849,14 @@
       });
     </script>
     <script>
-      $(document).ready(function() {
-          $("#trading_symbol").on("click", function() {
-              let symbol = $(this).text().trim();
-              let encodedSymbol = encodeURIComponent(symbol);
-              let url = `https://www.nseindia.com/get-quotes/equity?symbol=${encodedSymbol}`;
-              window.open(url, '_blank');
-          });
+      $(document).ready(function () {
+        $("#trading_symbol").on("click", function () {
+          let symbol = $(this).text().trim();
+          let encodedSymbol = encodeURIComponent(symbol);
+          let url = `https://www.nseindia.com/get-quotes/equity?symbol=${encodedSymbol}`;
+          window.open(url, "_blank");
+        });
       });
-      </script>
+    </script>
   </body>
 </html>
