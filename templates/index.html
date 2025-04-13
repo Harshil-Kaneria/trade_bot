@@ -104,7 +104,7 @@
                 </button>
               </td>
               <td id="est-message">-</td>
-              <td id="instrument_token">{{ instrument_token }}</td>
+              <td id="instrument_token" style="cursor: pointer">{{ instrument_token }}</td>
             </tr>
           </tbody>
         </table>
@@ -855,6 +855,13 @@
           let encodedSymbol = encodeURIComponent(symbol);
           let url = `https://www.nseindia.com/get-quotes/equity?symbol=${encodedSymbol}`;
           window.open(url, "_blank");
+        });
+        $("#instrument_token").on("click", function () {
+            let token = $(this).text().trim();
+            let symbol = $("#trading_symbol").text().trim();
+            let encodedSymbol = encodeURIComponent(symbol);
+            let url = `https://kite.zerodha.com/chart/ext/tvc/NSE/${encodedSymbol}/${token}`
+            window.open(url, "_blank");
         });
       });
     </script>
