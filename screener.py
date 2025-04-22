@@ -6,6 +6,7 @@ from kite_trade import *
 import datetime
 import talib
 import numpy as np
+from operator import itemgetter
 
 # Load environment variables
 load_dotenv(override=True)
@@ -18,6 +19,20 @@ symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
 df = pd.DataFrame(kite.instruments("NSE"))
 df = df[df["tradingsymbol"].isin(symbols_list)].reset_index(drop=True)
 df = df[df["segment"]!="INDICES"].reset_index()
+
+def convert_numpy_types(obj):
+    """Convert numpy types to native Python types for JSON serialization"""
+    if isinstance(obj, (np.int32, np.int64)):
+        return int(obj)
+    elif isinstance(obj, (np.float32, np.float64)):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {key: convert_numpy_types(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_types(item) for item in obj]
+    return obj
 
 def calculate_supertrend(high, low, close, period=10, multiplier=3):
     # Calculate ATR
@@ -45,9 +60,9 @@ def calculate_supertrend(high, low, close, period=10, multiplier=3):
         else:
             supertrend[i] = upper_band[i]
     
-    return supertrend, direction
+    return supertrend, direction, atr
 
-def analyze_instrument(instrument_token):
+def analyze_instrument(instrument_token, instrument_data):
     try:
         from_datetime = datetime.datetime.now() - datetime.timedelta(days=30)
         to_datetime = datetime.datetime.now()
@@ -63,7 +78,7 @@ def analyze_instrument(instrument_token):
         df['ema9'] = talib.EMA(df['close'], timeperiod=9)
         df['ema21'] = talib.EMA(df['close'], timeperiod=21)
         df['volume_sma20'] = talib.SMA(df['volume'], timeperiod=20)
-        df['supertrend'], df['supertrend_direction'] = calculate_supertrend(
+        df['supertrend'], df['supertrend_direction'], df['atr'] = calculate_supertrend(
             df['high'].values, df['low'].values, df['close'].values
         )
         
@@ -71,18 +86,52 @@ def analyze_instrument(instrument_token):
         latest = df.iloc[-1]
         prev = df.iloc[-2]
         
+        # Calculate additional metrics for ranking
+        price_distance_from_ema = (latest['close'] - latest['ema9']) / latest['ema9'] * 100
+        volume_ratio = latest['volume'] / latest['volume_sma20']
+        ema_distance = (latest['ema9'] - latest['ema21']) / latest['ema21'] * 100
+        
         # Check conditions
         ema_cross_up = (prev['ema9'] <= prev['ema21']) and (latest['ema9'] > latest['ema21'])
         ema_cross_down = (prev['ema9'] >= prev['ema21']) and (latest['ema9'] < latest['ema21'])
         volume_condition = latest['volume'] > latest['volume_sma20']
         
-        # Determine trend
+        # Prepare result with all calculated values
+        result = {
+            "instrument": convert_numpy_types(instrument_data.to_dict()),
+            "indicators": {
+                "current_price": convert_numpy_types(latest['close']),
+                "ema9": convert_numpy_types(latest['ema9']),
+                "ema21": convert_numpy_types(latest['ema21']),
+                "supertrend_value": convert_numpy_types(latest['supertrend']),
+                "supertrend_direction": "up" if latest['supertrend_direction'] == 1 else "down",
+                "atr": convert_numpy_types(latest['atr']),
+                "volume": convert_numpy_types(latest['volume']),
+                "volume_sma20": convert_numpy_types(latest['volume_sma20']),
+                "volume_ratio": convert_numpy_types(round(volume_ratio, 2)),
+                "price_distance_from_ema": convert_numpy_types(round(price_distance_from_ema, 2)),
+                "ema_distance": convert_numpy_types(round(ema_distance, 2)),
+                "date": latest['date'].strftime('%Y-%m-%d') if hasattr(latest['date'], 'strftime') else str(latest['date'])
+            },
+            "strength_score": convert_numpy_types(round(strength, 2)) if 'strength' in locals() else 0
+        }
+        
+        # Determine trend and calculate strength score
         if ema_cross_up and volume_condition and latest['supertrend_direction'] == 1:
-            return "up"
+            # Calculate strength score for upside positions
+            strength = (volume_ratio * 0.4) + (ema_distance * 0.3) + (price_distance_from_ema * 0.3)
+            result["signal"] = "up"
+            result["strength_score"] = round(strength, 2)
+            return result
+            
         elif ema_cross_down and volume_condition and latest['supertrend_direction'] == -1:
-            return "down"
-        else:
-            return None
+            # Calculate strength score for downside positions
+            strength = (volume_ratio * 0.4) + (abs(ema_distance) * 0.3) + (abs(price_distance_from_ema) * 0.3)
+            result["signal"] = "down"
+            result["strength_score"] = round(strength, 2)
+            return result
+            
+        return None
             
     except Exception as e:
         print(f"Error analyzing instrument {instrument_token}: {e}")
@@ -95,17 +144,31 @@ def run_screener():
         shortSidePosition = []
         
         for _, row in df.iterrows():
-            result = analyze_instrument(row['instrument_token'])
+            result = analyze_instrument(row['instrument_token'], row)
             
-            if result == "up":
-                upSidePosition.append(row.to_dict())
-            elif result == "down":
-                shortSidePosition.append(row.to_dict())
+            if result and result["signal"] == "up":
+                upSidePosition.append(convert_numpy_types(result))
+            elif result and result["signal"] == "down":
+                shortSidePosition.append(convert_numpy_types(result))
         
+        # Sort by strength score (descending)
+        upSidePosition.sort(key=lambda x: x['strength_score'], reverse=True)
+        shortSidePosition.sort(key=lambda x: x['strength_score'], reverse=True)
+        
+        # Prepare response with all calculated values
         response = {
-            "upSidePosition": upSidePosition,
-            "shortSidePosition": shortSidePosition,
-            "last_updated": datetime.datetime.now().isoformat()
+            "upSidePosition": convert_numpy_types(upSidePosition),
+            "shortSidePosition": convert_numpy_types(shortSidePosition),
+            "analysis_parameters": {
+                "ema_periods": {"short": 9, "long": 21},
+                "supertrend_settings": {"period": 10, "multiplier": 3},
+                "volume_sma_period": 20,
+                "data_period": "30 days daily",
+                "strength_calculation": "40% volume ratio + 30% EMA distance + 30% price distance from EMA"
+            },
+            "last_updated": datetime.datetime.now().isoformat(),
+            "total_up_signals": convert_numpy_types(len(upSidePosition)),
+            "total_down_signals": convert_numpy_types(len(shortSidePosition))
         }
         
         return jsonify(response)
