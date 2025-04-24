@@ -1,0 +1,121 @@
+{
+    "upSidePosition": [
+        {
+            "instrument": {
+                "index": 171,
+                "instrument_token": 1076225,
+                "exchange_token": "4204",
+                "tradingsymbol": "MOTHERSON",
+                "name": "SAMVRDHNA MTHRSN INTL",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.01,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 136.78,
+                    "ema9": 135.91888375955057,
+                    "ema21": 135.90234799889484,
+                    "supertrend_value": 135.13949571777636,
+                    "supertrend_direction": "up",
+                    "atr": 0.3785014274078876,
+                    "volume": 2441246,
+                    "volume_sma20": 323133.65,
+                    "volume_ratio": 7.55,
+                    "price_distance_from_ema": 0.63,
+                    "ema_distance": 0.01,
+                    "date": "2025-04-24"
+                }
+            },
+            "strength_score": 2.52,
+            "signal": "up"
+        },
+        {
+            "instrument": {
+                "index": 314,
+                "instrument_token": 3406081,
+                "exchange_token": "13305",
+                "tradingsymbol": "CENTURYPLY",
+                "name": "CENTURY PLYBOARDS (I)",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.05,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 731.3,
+                    "ema9": 728.0959991434262,
+                    "ema21": 727.7657730123819,
+                    "supertrend_value": 724.7393595539617,
+                    "supertrend_direction": "up",
+                    "atr": 2.003546815346131,
+                    "volume": 4130,
+                    "volume_sma20": 676.85,
+                    "volume_ratio": 6.1,
+                    "price_distance_from_ema": 0.44,
+                    "ema_distance": 0.05,
+                    "date": "2025-04-24"
+                }
+            },
+            "strength_score": 2.02,
+            "signal": "up"
+        }
+    ],
+    "shortSidePosition": [
+        {
+            "instrument": {
+                "index": 465,
+                "instrument_token": 6386689,
+                "exchange_token": "24948",
+                "tradingsymbol": "LTF",
+                "name": "L&T FINANCE",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.01,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 179.35,
+                    "ema9": 179.50969002579762,
+                    "ema21": 179.53036915087645,
+                    "supertrend_value": 180.3146597944893,
+                    "supertrend_direction": "down",
+                    "atr": 0.31155326482976553,
+                    "volume": 135070,
+                    "volume_sma20": 124632.65,
+                    "volume_ratio": 1.08,
+                    "price_distance_from_ema": -0.09,
+                    "ema_distance": -0.01,
+                    "date": "2025-04-24"
+                }
+            },
+            "strength_score": 0.36,
+            "signal": "down"
+        }
+    ],
+    "analysis_parameters": {
+        "ema_periods": {
+            "short": 9,
+            "long": 21
+        },
+        "supertrend_settings": {
+            "period": 10,
+            "multiplier": 3
+        },
+        "volume_sma_period": 20,
+        "data_period": "30 days daily",
+        "strength_calculation": "30% volume ratio + 30% EMA distance + 40% price distance from EMA"
+    },
+    "last_updated": "2025-04-24T15:23:44.446774",
+    "total_up_signals": 2,
+    "total_down_signals": 1
+}

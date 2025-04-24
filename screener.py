@@ -1,19 +1,16 @@
 import os
 from dotenv import load_dotenv
 import pandas as pd
-from flask import Flask, jsonify
 from kite_trade import *
 import datetime
 import talib
 import numpy as np
-from operator import itemgetter
+import json
 
 # Load environment variables
 load_dotenv(override=True)
 enctoken = os.getenv("ENCTOKEN")
 kite = KiteApp(enctoken=enctoken)
-
-app = Flask(__name__)
 
 symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
 df = pd.DataFrame(kite.instruments("NSE"))
@@ -99,34 +96,35 @@ def analyze_instrument(instrument_token, instrument_data):
         # Prepare result with all calculated values
         result = {
             "instrument": convert_numpy_types(instrument_data.to_dict()),
-            "indicators": {
-                "current_price": convert_numpy_types(latest['close']),
-                "ema9": convert_numpy_types(latest['ema9']),
-                "ema21": convert_numpy_types(latest['ema21']),
-                "supertrend_value": convert_numpy_types(latest['supertrend']),
-                "supertrend_direction": "up" if latest['supertrend_direction'] == 1 else "down",
-                "atr": convert_numpy_types(latest['atr']),
-                "volume": convert_numpy_types(latest['volume']),
-                "volume_sma20": convert_numpy_types(latest['volume_sma20']),
-                "volume_ratio": convert_numpy_types(round(volume_ratio, 2)),
-                "price_distance_from_ema": convert_numpy_types(round(price_distance_from_ema, 2)),
-                "ema_distance": convert_numpy_types(round(ema_distance, 2)),
-                "date": latest['date'].strftime('%Y-%m-%d') if hasattr(latest['date'], 'strftime') else str(latest['date'])
-            },
             "strength_score": convert_numpy_types(round(strength, 2)) if 'strength' in locals() else 0
+        }
+        
+        result["instrument"]["indicators"] = {
+            "current_price": convert_numpy_types(latest['close']),
+            "ema9": convert_numpy_types(latest['ema9']),
+            "ema21": convert_numpy_types(latest['ema21']),
+            "supertrend_value": convert_numpy_types(latest['supertrend']),
+            "supertrend_direction": "up" if latest['supertrend_direction'] == 1 else "down",
+            "atr": convert_numpy_types(latest['atr']),
+            "volume": convert_numpy_types(latest['volume']),
+            "volume_sma20": convert_numpy_types(latest['volume_sma20']),
+            "volume_ratio": convert_numpy_types(round(volume_ratio, 2)),
+            "price_distance_from_ema": convert_numpy_types(round(price_distance_from_ema, 2)),
+            "ema_distance": convert_numpy_types(round(ema_distance, 2)),
+            "date": latest['date'].strftime('%Y-%m-%d') if hasattr(latest['date'], 'strftime') else str(latest['date'])
         }
         
         # Determine trend and calculate strength score
         if ema_cross_up and volume_condition and latest['supertrend_direction'] == 1:
             # Calculate strength score for upside positions
-            strength = (volume_ratio * 0.4) + (ema_distance * 0.3) + (price_distance_from_ema * 0.3)
+            strength = (volume_ratio * 0.3) + (ema_distance * 0.3) + (price_distance_from_ema * 0.4)
             result["signal"] = "up"
             result["strength_score"] = round(strength, 2)
             return result
             
         elif ema_cross_down and volume_condition and latest['supertrend_direction'] == -1:
             # Calculate strength score for downside positions
-            strength = (volume_ratio * 0.4) + (abs(ema_distance) * 0.3) + (abs(price_distance_from_ema) * 0.3)
+            strength = (volume_ratio * 0.3) + (abs(ema_distance) * 0.3) + (abs(price_distance_from_ema) * 0.4)
             result["signal"] = "down"
             result["strength_score"] = round(strength, 2)
             return result
@@ -137,7 +135,6 @@ def analyze_instrument(instrument_token, instrument_data):
         print(f"Error analyzing instrument {instrument_token}: {e}")
         return None
 
-@app.route("/api/screener", methods=["GET"])
 def run_screener():
     try:
         upSidePosition = []
@@ -148,8 +145,12 @@ def run_screener():
             
             if result and result["signal"] == "up":
                 upSidePosition.append(convert_numpy_types(result))
+                print(f"Scanned {row['tradingsymbol']} + Buy Signal")
             elif result and result["signal"] == "down":
                 shortSidePosition.append(convert_numpy_types(result))
+                print(f"Scanned {row['tradingsymbol']} - Sell Signal")
+            else:
+                print(f"Scanned {row['tradingsymbol']}")
         
         # Sort by strength score (descending)
         upSidePosition.sort(key=lambda x: x['strength_score'], reverse=True)
@@ -164,17 +165,19 @@ def run_screener():
                 "supertrend_settings": {"period": 10, "multiplier": 3},
                 "volume_sma_period": 20,
                 "data_period": "30 days daily",
-                "strength_calculation": "40% volume ratio + 30% EMA distance + 30% price distance from EMA"
+                "strength_calculation": "30% volume ratio + 30% EMA distance + 40% price distance from EMA"
             },
             "last_updated": datetime.datetime.now().isoformat(),
             "total_up_signals": convert_numpy_types(len(upSidePosition)),
             "total_down_signals": convert_numpy_types(len(shortSidePosition))
         }
+        with open("screener.json", "w") as f:
+            json.dump(response, f, indent=4)
         
-        return jsonify(response)
-    
+        print("\nScan saved to screener.json")
+ 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"\nError {str(e)}")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    run_screener()
