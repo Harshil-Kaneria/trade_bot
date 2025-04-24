@@ -6,6 +6,8 @@ import datetime
 import talib
 import numpy as np
 import json
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Load environment variables
 load_dotenv(override=True)
@@ -137,20 +139,37 @@ def analyze_instrument(instrument_token, instrument_data):
 
 def run_screener():
     try:
+        start_time = datetime.datetime.now()
+
         upSidePosition = []
         shortSidePosition = []
         
-        for _, row in df.iterrows():
+        # Create thread-safe lists
+        upSidePosition_lock = threading.Lock()
+        shortSidePosition_lock = threading.Lock()
+        
+        def process_row(row):
             result = analyze_instrument(row['instrument_token'], row)
             
             if result and result["signal"] == "up":
-                upSidePosition.append(convert_numpy_types(result))
+                with upSidePosition_lock:
+                    upSidePosition.append(convert_numpy_types(result))
                 print(f"Scanned {row['tradingsymbol']} + Buy Signal")
             elif result and result["signal"] == "down":
-                shortSidePosition.append(convert_numpy_types(result))
+                with shortSidePosition_lock:
+                    shortSidePosition.append(convert_numpy_types(result))
                 print(f"Scanned {row['tradingsymbol']} - Sell Signal")
             else:
                 print(f"Scanned {row['tradingsymbol']}")
+        
+        # Using ThreadPoolExecutor for parallel processing
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            # Submit all tasks to the executor
+            futures = [executor.submit(process_row, row) for _, row in df.iterrows()]
+            
+            # Wait for all tasks to complete
+            for future in as_completed(futures):
+                future.result()  # This will raise exceptions if any occurred
         
         # Sort by strength score (descending)
         upSidePosition.sort(key=lambda x: x['strength_score'], reverse=True)
@@ -173,7 +192,10 @@ def run_screener():
         }
         with open("screener.json", "w") as f:
             json.dump(response, f, indent=4)
-        
+
+        end_time = datetime.datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        print(f"Scanning completed in {duration:.2f} seconds")
         print("\nScan saved to screener.json")
  
     except Exception as e:
