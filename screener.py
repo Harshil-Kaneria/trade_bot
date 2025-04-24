@@ -188,7 +188,9 @@ def run_screener():
             },
             "last_updated": datetime.datetime.now().isoformat(),
             "total_up_signals": convert_numpy_types(len(upSidePosition)),
-            "total_down_signals": convert_numpy_types(len(shortSidePosition))
+            "total_down_signals": convert_numpy_types(len(shortSidePosition)),
+            "upSidePositionCsv": ",".join([f"NSE:{item['instrument']['tradingsymbol']}" for item in upSidePosition]),
+            "shortSidePositionCsv": ",".join([f"NSE:{item['instrument']['tradingsymbol']}" for item in shortSidePosition]),
         }
         with open("screener.json", "w") as f:
             json.dump(response, f, indent=4)

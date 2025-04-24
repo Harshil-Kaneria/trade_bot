@@ -379,7 +379,9 @@
         "data_period": "30 days daily",
         "strength_calculation": "30% volume ratio + 30% EMA distance + 40% price distance from EMA"
     },
-    "last_updated": "2025-04-24T17:59:28.406963",
+    "last_updated": "2025-04-24T20:47:05.124538",
     "total_up_signals": 9,
-    "total_down_signals": 2
+    "total_down_signals": 2,
+    "upSidePositionCsv": "NSE:JYOTICNC,NSE:KPIL,NSE:AWL,NSE:DIXON,NSE:SAIL,NSE:CGPOWER,NSE:KANSAINER,NSE:AJANTPHARM,NSE:PRESTIGE",
+    "shortSidePositionCsv": "NSE:PIDILITIND,NSE:BAJFINANCE"
 }
