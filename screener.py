@@ -197,7 +197,7 @@ def run_screener():
 
         end_time = datetime.datetime.now()
         duration = (end_time - start_time).total_seconds()
-        print(f"Scanning completed in {duration:.2f} seconds")
+        print(f"\nScanning completed in {duration:.2f} seconds")
         print("\nScan saved to screener.json")
  
     except Exception as e:
