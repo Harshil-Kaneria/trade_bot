@@ -163,7 +163,7 @@ def run_screener():
                 print(f"Scanned {row['tradingsymbol']}")
         
         # Using ThreadPoolExecutor for parallel processing
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=(os.cpu_count() * 5)) as executor:
             # Submit all tasks to the executor
             futures = [executor.submit(process_row, row) for _, row in df.iterrows()]
             
