@@ -14,6 +14,20 @@ load_dotenv(override=True)
 enctoken = os.getenv("ENCTOKEN")
 kite = KiteApp(enctoken=enctoken)
 
+EMA_PERIODS_SHORT=9
+EMA_PERIODS_LONG=21 
+
+SUPERTREND_SETTINGS_PERIOD=10
+SUPERTREND_SETTINGS_MULTIPLIER=3
+
+VOLUME_SMA_PERIOD=20
+
+DATA_PERIOD=30
+
+STRENGTH_CALCULATION_VOLUMN=30
+STRENGTH_CALCULATION_EMA_DISTANCE=50
+STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA=20
+
 symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
 df = pd.DataFrame(kite.instruments("NSE"))
 df = df[df["tradingsymbol"].isin(symbols_list)].reset_index(drop=True)
@@ -33,7 +47,7 @@ def convert_numpy_types(obj):
         return [convert_numpy_types(item) for item in obj]
     return obj
 
-def calculate_supertrend(high, low, close, period=10, multiplier=3):
+def calculate_supertrend(high, low, close, period=SUPERTREND_SETTINGS_PERIOD, multiplier=SUPERTREND_SETTINGS_MULTIPLIER):
     # Calculate ATR
     atr = talib.ATR(high, low, close, timeperiod=period)
     
@@ -74,9 +88,9 @@ def analyze_instrument(instrument_token, instrument_data):
             return None
             
         # Calculate indicators
-        df['ema9'] = talib.EMA(df['close'], timeperiod=9)
-        df['ema21'] = talib.EMA(df['close'], timeperiod=21)
-        df['volume_sma20'] = talib.SMA(df['volume'], timeperiod=20)
+        df['emaLow'] = talib.EMA(df['close'], timeperiod=EMA_PERIODS_SHORT)
+        df['emaHigh'] = talib.EMA(df['close'], timeperiod=EMA_PERIODS_LONG)
+        df['volume_sma'] = talib.SMA(df['volume'], timeperiod=VOLUME_SMA_PERIOD)
         df['supertrend'], df['supertrend_direction'], df['atr'] = calculate_supertrend(
             df['high'].values, df['low'].values, df['close'].values
         )
@@ -86,14 +100,14 @@ def analyze_instrument(instrument_token, instrument_data):
         prev = df.iloc[-2]
         
         # Calculate additional metrics for ranking
-        price_distance_from_ema = (latest['close'] - latest['ema9']) / latest['ema9'] * 100
-        volume_ratio = latest['volume'] / latest['volume_sma20']
-        ema_distance = (latest['ema9'] - latest['ema21']) / latest['ema21'] * 100
+        price_distance_from_ema = (latest['close'] - latest['emaLow']) / latest['emaLow'] * 100
+        volume_ratio = latest['volume'] / latest['volume_sma']
+        ema_distance = (latest['emaLow'] - latest['emaHigh']) / latest['emaHigh'] * 100
         
         # Check conditions
-        ema_cross_up = (prev['ema9'] <= prev['ema21']) and (latest['ema9'] > latest['ema21'])
-        ema_cross_down = (prev['ema9'] >= prev['ema21']) and (latest['ema9'] < latest['ema21'])
-        volume_condition = latest['volume'] > latest['volume_sma20']
+        ema_cross_up = (prev['emaLow'] <= prev['emaHigh']) and (latest['emaLow'] > latest['emaHigh'])
+        ema_cross_down = (prev['emaLow'] >= prev['emaHigh']) and (latest['emaLow'] < latest['emaHigh'])
+        volume_condition = latest['volume'] > latest['volume_sma']
         
         # Prepare result with all calculated values
         result = {
@@ -103,13 +117,13 @@ def analyze_instrument(instrument_token, instrument_data):
         
         result["instrument"]["indicators"] = {
             "current_price": convert_numpy_types(latest['close']),
-            "ema9": convert_numpy_types(latest['ema9']),
-            "ema21": convert_numpy_types(latest['ema21']),
+            "emaLow": convert_numpy_types(latest['emaLow']),
+            "emaHigh": convert_numpy_types(latest['emaHigh']),
             "supertrend_value": convert_numpy_types(latest['supertrend']),
             "supertrend_direction": "up" if latest['supertrend_direction'] == 1 else "down",
             "atr": convert_numpy_types(latest['atr']),
             "volume": convert_numpy_types(latest['volume']),
-            "volume_sma20": convert_numpy_types(latest['volume_sma20']),
+            "volume_sma": convert_numpy_types(latest['volume_sma']),
             "volume_ratio": convert_numpy_types(round(volume_ratio, 2)),
             "price_distance_from_ema": convert_numpy_types(round(price_distance_from_ema, 2)),
             "ema_distance": convert_numpy_types(round(ema_distance, 2)),
@@ -119,14 +133,14 @@ def analyze_instrument(instrument_token, instrument_data):
         # Determine trend and calculate strength score
         if ema_cross_up and volume_condition and latest['supertrend_direction'] == 1:
             # Calculate strength score for upside positions
-            strength = (volume_ratio * 0.3) + (ema_distance * 0.3) + (price_distance_from_ema * 0.4)
+            strength = (volume_ratio * (STRENGTH_CALCULATION_VOLUMN/10)) + (ema_distance * (STRENGTH_CALCULATION_EMA_DISTANCE/10)) + (price_distance_from_ema * (STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA/10))
             result["signal"] = "up"
             result["strength_score"] = round(strength, 2)
             return result
             
         elif ema_cross_down and volume_condition and latest['supertrend_direction'] == -1:
             # Calculate strength score for downside positions
-            strength = (volume_ratio * 0.3) + (abs(ema_distance) * 0.3) + (abs(price_distance_from_ema) * 0.4)
+            strength = (volume_ratio * (STRENGTH_CALCULATION_VOLUMN/10)) + (abs(ema_distance) * (STRENGTH_CALCULATION_EMA_DISTANCE/10)) + (abs(price_distance_from_ema) * (STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA/10))
             result["signal"] = "down"
             result["strength_score"] = round(strength, 2)
             return result
@@ -180,11 +194,11 @@ def run_screener():
             "upSidePosition": convert_numpy_types(upSidePosition),
             "shortSidePosition": convert_numpy_types(shortSidePosition),
             "analysis_parameters": {
-                "ema_periods": {"short": 9, "long": 21},
-                "supertrend_settings": {"period": 10, "multiplier": 3},
-                "volume_sma_period": 20,
-                "data_period": "30 days daily",
-                "strength_calculation": "30% volume ratio + 30% EMA distance + 40% price distance from EMA"
+                "ema_periods": {"short": EMA_PERIODS_SHORT, "long": EMA_PERIODS_LONG},
+                "supertrend_settings": {"period": SUPERTREND_SETTINGS_PERIOD, "multiplier": SUPERTREND_SETTINGS_MULTIPLIER},
+                "volume_sma_period": VOLUME_SMA_PERIOD,
+                "data_period": f"{DATA_PERIOD} days daily",
+                "strength_calculation": f"{STRENGTH_CALCULATION_VOLUMN}% volume ratio + {STRENGTH_CALCULATION_EMA_DISTANCE}% EMA distance + {STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA}% price distance from EMA"
             },
             "last_updated": datetime.datetime.now().isoformat(),
             "total_up_signals": convert_numpy_types(len(upSidePosition)),
