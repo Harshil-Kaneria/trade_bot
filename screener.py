@@ -25,8 +25,8 @@ VOLUME_SMA_PERIOD=20
 DATA_PERIOD=30
 
 STRENGTH_CALCULATION_VOLUMN=30
-STRENGTH_CALCULATION_EMA_DISTANCE=50
-STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA=20
+STRENGTH_CALCULATION_EMA_DISTANCE=30
+STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA=40
 
 symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
 df = pd.DataFrame(kite.instruments("NSE"))
@@ -109,42 +109,84 @@ def analyze_instrument(instrument_token, instrument_data):
         ema_cross_down = (prev['emaLow'] >= prev['emaHigh']) and (latest['emaLow'] < latest['emaHigh'])
         volume_condition = latest['volume'] > latest['volume_sma']
         
-        # Prepare result with all calculated values
-        result = {
-            "instrument": convert_numpy_types(instrument_data.to_dict()),
-            "strength_score": convert_numpy_types(round(strength, 2)) if 'strength' in locals() else 0
-        }
-        
-        result["instrument"]["indicators"] = {
-            "current_price": convert_numpy_types(latest['close']),
-            "emaLow": convert_numpy_types(latest['emaLow']),
-            "emaHigh": convert_numpy_types(latest['emaHigh']),
-            "supertrend_value": convert_numpy_types(latest['supertrend']),
-            "supertrend_direction": "up" if latest['supertrend_direction'] == 1 else "down",
-            "atr": convert_numpy_types(latest['atr']),
-            "volume": convert_numpy_types(latest['volume']),
-            "volume_sma": convert_numpy_types(latest['volume_sma']),
-            "volume_ratio": convert_numpy_types(round(volume_ratio, 2)),
-            "price_distance_from_ema": convert_numpy_types(round(price_distance_from_ema, 2)),
-            "ema_distance": convert_numpy_types(round(ema_distance, 2)),
-            "date": latest['date'].strftime('%Y-%m-%d') if hasattr(latest['date'], 'strftime') else str(latest['date'])
-        }
-        
         # Determine trend and calculate strength score
+        signal = None
+        strength = 0
         if ema_cross_up and volume_condition and latest['supertrend_direction'] == 1:
-            # Calculate strength score for upside positions
-            strength = (volume_ratio * (STRENGTH_CALCULATION_VOLUMN/10)) + (ema_distance * (STRENGTH_CALCULATION_EMA_DISTANCE/10)) + (price_distance_from_ema * (STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA/10))
-            result["signal"] = "up"
-            result["strength_score"] = round(strength, 2)
-            return result
-            
+            signal = "up"
+            strength = (volume_ratio * (STRENGTH_CALCULATION_VOLUMN/10)) + \
+                       (ema_distance * (STRENGTH_CALCULATION_EMA_DISTANCE/10)) + \
+                       (price_distance_from_ema * (STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA/10))
         elif ema_cross_down and volume_condition and latest['supertrend_direction'] == -1:
-            # Calculate strength score for downside positions
-            strength = (volume_ratio * (STRENGTH_CALCULATION_VOLUMN/10)) + (abs(ema_distance) * (STRENGTH_CALCULATION_EMA_DISTANCE/10)) + (abs(price_distance_from_ema) * (STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA/10))
-            result["signal"] = "down"
-            result["strength_score"] = round(strength, 2)
-            return result
+            signal = "down"
+            strength = (volume_ratio * (STRENGTH_CALCULATION_VOLUMN/10)) + \
+                       (abs(ema_distance) * (STRENGTH_CALCULATION_EMA_DISTANCE/10)) + \
+                       (abs(price_distance_from_ema) * (STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA/10))
+        
+        if signal:
+            # Dynamic target and stop-loss calculation
+            lookback_period = 20  # You can adjust this period
+            recent_data = df[-lookback_period:]
+            entry_price = latest['close']
             
+            if signal == "up":
+                target_price = recent_data['high'].max()
+                stop_loss_price = recent_data['low'].min()
+            else:
+                target_price = recent_data['low'].min()
+                stop_loss_price = recent_data['high'].max()
+            
+            # Calculate risk and reward
+            if signal == "up":
+                risk = entry_price - stop_loss_price
+                reward = target_price - entry_price
+            else:
+                risk = stop_loss_price - entry_price
+                reward = entry_price - target_price
+            
+            if risk <= 0 or reward <= 0:
+                return None  # Invalid risk/reward scenario
+            
+            risk_reward_ratio = reward / risk
+            if risk_reward_ratio < 1:
+                return None  # Skip trades with risk-reward ratio less than 1
+            
+            target_percentage = (reward / entry_price) * 100
+            stop_loss_percentage = (risk / entry_price) * 100
+            
+            # Prepare result
+            result = {
+                "instrument": convert_numpy_types(instrument_data.to_dict()),
+                "signal": signal,
+                "strength_score": round(strength, 2),
+                "entry_price": round(entry_price, 2),
+                "target_price": round(target_price, 2),
+                "stop_loss_price": round(stop_loss_price, 2),
+                "risk_reward_ratio": round(risk_reward_ratio, 2),
+                "target_percentage": round(target_percentage, 2),
+                "stop_loss_percentage": round(stop_loss_percentage, 2),
+                "instrument": {
+                    "tradingsymbol": instrument_data['tradingsymbol'],
+                    "name": instrument_data['name'],
+                    "instrument_token": instrument_token,
+                    "indicators": {
+                        "current_price": round(entry_price, 2),
+                        "emaLow": round(latest['emaLow'], 2),
+                        "emaHigh": round(latest['emaHigh'], 2),
+                        "supertrend_value": round(latest['supertrend'], 2),
+                        "supertrend_direction": "up" if latest['supertrend_direction'] == 1 else "down",
+                        "atr": round(latest['atr'], 2),
+                        "volume": int(latest['volume']),
+                        "volume_sma": round(latest['volume_sma'], 2),
+                        "volume_ratio": round(volume_ratio, 2),
+                        "price_distance_from_ema": round(price_distance_from_ema, 2),
+                        "ema_distance": round(ema_distance, 2),
+                        "date": latest['date'].strftime('%Y-%m-%d') if hasattr(latest['date'], 'strftime') else str(latest['date'])
+                    }
+                }
+            }
+            return result
+        
         return None
             
     except Exception as e:
