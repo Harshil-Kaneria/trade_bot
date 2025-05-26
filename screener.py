@@ -85,6 +85,63 @@ def calculate_supertrend(high, low, close, period=ANALYSIS_PARAMS['supertrend'][
     
     return supertrend, direction, atr
 
+def calculate_support_resistance(df, lookback_period=30):
+    """
+    Calculate support and resistance levels using recent pivot points
+    Args:
+        df: DataFrame with OHLC data
+        lookback_period: Number of candles to consider for finding pivot points
+    Returns:
+        dict with support and resistance levels
+    """
+    try:
+        # Get the most recent data
+        recent_data = df.tail(lookback_period).copy()
+        
+        # Find pivot points (local maxima/minima)
+        recent_data['pivot'] = 0
+        for i in range(1, len(recent_data)-1):
+            prev_close = recent_data.iloc[i-1]['close']
+            curr_close = recent_data.iloc[i]['close']
+            next_close = recent_data.iloc[i+1]['close']
+            
+            if curr_close > prev_close and curr_close > next_close:
+                recent_data.iloc[i, recent_data.columns.get_loc('pivot')] = 1  # Resistance
+            elif curr_close < prev_close and curr_close < next_close:
+                recent_data.iloc[i, recent_data.columns.get_loc('pivot')] = -1  # Support
+        
+        # Get resistance levels (top 3 pivot highs)
+        resistance = recent_data[recent_data['pivot'] == 1]['high'].sort_values(ascending=False).head(3).values
+        resistance = sorted(resistance)  # Sort from nearest to farthest
+        
+        # Get support levels (top 3 pivot lows)
+        support = recent_data[recent_data['pivot'] == -1]['low'].sort_values().head(3).values
+        support = sorted(support, reverse=True)  # Sort from nearest to farthest
+        
+        # Get current price
+        current_price = recent_data.iloc[-1]['close']
+        
+        # Find nearest support/resistance
+        nearest_resistance = next((r for r in resistance if r > current_price), None)
+        nearest_support = next((s for s in support if s < current_price), None)
+        
+        return {
+            'support_levels': support.tolist() if hasattr(support, 'tolist') else list(support),
+            'resistance_levels': resistance.tolist() if hasattr(resistance, 'tolist') else list(resistance),
+            'nearest_support': float(nearest_support) if nearest_support else None,
+            'nearest_resistance': float(nearest_resistance) if nearest_resistance else None,
+            'method': f'Pivot points from last {lookback_period} candles'
+        }
+    except Exception as e:
+        print(f"Error calculating support/resistance: {e}")
+        return {
+            'support_levels': [],
+            'resistance_levels': [],
+            'nearest_support': None,
+            'nearest_resistance': None,
+            'method': 'Error occurred'
+        }
+
 def analyze_instrument(instrument_token, instrument_data):
     try:
         from_datetime = datetime.datetime.now() - datetime.timedelta(days=ANALYSIS_PARAMS['data_period_days'])
@@ -105,6 +162,9 @@ def analyze_instrument(instrument_token, instrument_data):
             df['high'].values, df['low'].values, df['close'].values
         )
         
+        # Calculate support and resistance
+        sr_levels = calculate_support_resistance(df)
+        
         # Get latest values
         latest = df.iloc[-1]
         prev = df.iloc[-2]
@@ -123,7 +183,8 @@ def analyze_instrument(instrument_token, instrument_data):
         result = {
             "instrument": convert_numpy_types(instrument_data.to_dict()),
             "analysis_parameters": ANALYSIS_PARAMS,
-            "strength_score": 0
+            "strength_score": 0,
+            "support_resistance": convert_numpy_types(sr_levels)
         }
         
         result["instrument"]["indicators"] = {
@@ -149,6 +210,20 @@ def analyze_instrument(instrument_token, instrument_data):
                        (price_distance_from_ema * ANALYSIS_PARAMS['strength_weights']['price_distance']))
             result["signal"] = "up"
             result["strength_score"] = round(strength, 2)
+            
+            # Add target and stoploss suggestions for long positions
+            if sr_levels['nearest_resistance']:
+                atr = latest['atr']
+                result["target_suggestion"] = {
+                    "conservative": round(sr_levels['nearest_resistance'], 2),
+                    "moderate": round(latest['close'] + 2*atr, 2),
+                    "aggressive": round(latest['close'] + 3*atr, 2)
+                }
+                result["stoploss_suggestion"] = {
+                    "conservative": round(sr_levels['nearest_support'] if sr_levels['nearest_support'] else latest['close'] - 2*atr, 2),
+                    "moderate": round(latest['close'] - atr, 2),
+                    "aggressive": round(latest['close'] - 0.5*atr, 2)
+                }
             return result
             
         elif ema_cross_down and volume_condition and latest['supertrend_direction'] == -1:
@@ -158,6 +233,20 @@ def analyze_instrument(instrument_token, instrument_data):
                        (abs(price_distance_from_ema) * ANALYSIS_PARAMS['strength_weights']['price_distance']))
             result["signal"] = "down"
             result["strength_score"] = round(strength, 2)
+            
+            # Add target and stoploss suggestions for short positions
+            if sr_levels['nearest_support']:
+                atr = latest['atr']
+                result["target_suggestion"] = {
+                    "conservative": round(sr_levels['nearest_support'], 2),
+                    "moderate": round(latest['close'] - 2*atr, 2),
+                    "aggressive": round(latest['close'] - 3*atr, 2)
+                }
+                result["stoploss_suggestion"] = {
+                    "conservative": round(sr_levels['nearest_resistance'] if sr_levels['nearest_resistance'] else latest['close'] + 2*atr, 2),
+                    "moderate": round(latest['close'] + atr, 2),
+                    "aggressive": round(latest['close'] + 0.5*atr, 2)
+                }
             return result
             
         return None

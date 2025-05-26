@@ -52,7 +52,32 @@
                 "min_data_points": 21
             },
             "strength_score": 0.98,
-            "signal": "up"
+            "support_resistance": {
+                "support_levels": [
+                    140.2,
+                    140.1,
+                    140.05
+                ],
+                "resistance_levels": [
+                    140.5,
+                    140.68,
+                    140.79
+                ],
+                "nearest_support": 140.2,
+                "nearest_resistance": 140.5,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "up",
+            "target_suggestion": {
+                "conservative": 140.5,
+                "moderate": 141.0,
+                "aggressive": 141.27
+            },
+            "stoploss_suggestion": {
+                "conservative": 140.2,
+                "moderate": 140.18,
+                "aggressive": 140.31
+            }
         },
         {
             "instrument": {
@@ -106,6 +131,21 @@
                 "min_data_points": 21
             },
             "strength_score": 0.9,
+            "support_resistance": {
+                "support_levels": [
+                    432.15,
+                    432.1,
+                    432.1
+                ],
+                "resistance_levels": [
+                    432.55,
+                    433.7,
+                    435.4
+                ],
+                "nearest_support": 432.15,
+                "nearest_resistance": null,
+                "method": "Pivot points from last 30 candles"
+            },
             "signal": "up"
         },
         {
@@ -160,6 +200,21 @@
                 "min_data_points": 21
             },
             "strength_score": 0.76,
+            "support_resistance": {
+                "support_levels": [
+                    265.75,
+                    265.6,
+                    264.9
+                ],
+                "resistance_levels": [
+                    267.04,
+                    267.18,
+                    267.26
+                ],
+                "nearest_support": 265.75,
+                "nearest_resistance": null,
+                "method": "Pivot points from last 30 candles"
+            },
             "signal": "up"
         },
         {
@@ -214,6 +269,21 @@
                 "min_data_points": 21
             },
             "strength_score": 0.69,
+            "support_resistance": {
+                "support_levels": [
+                    1010.1,
+                    1010.0,
+                    1009.0
+                ],
+                "resistance_levels": [
+                    1013.55,
+                    1015.1,
+                    1015.6
+                ],
+                "nearest_support": 1010.1,
+                "nearest_resistance": null,
+                "method": "Pivot points from last 30 candles"
+            },
             "signal": "up"
         },
         {
@@ -268,6 +338,21 @@
                 "min_data_points": 21
             },
             "strength_score": 0.63,
+            "support_resistance": {
+                "support_levels": [
+                    337.2,
+                    337.2,
+                    337.05
+                ],
+                "resistance_levels": [
+                    338.5,
+                    338.55,
+                    338.65
+                ],
+                "nearest_support": 337.2,
+                "nearest_resistance": null,
+                "method": "Pivot points from last 30 candles"
+            },
             "signal": "up"
         },
         {
@@ -322,6 +407,21 @@
                 "min_data_points": 21
             },
             "strength_score": 0.62,
+            "support_resistance": {
+                "support_levels": [
+                    39.46,
+                    39.45,
+                    39.44
+                ],
+                "resistance_levels": [
+                    39.56,
+                    39.56,
+                    39.58
+                ],
+                "nearest_support": 39.46,
+                "nearest_resistance": null,
+                "method": "Pivot points from last 30 candles"
+            },
             "signal": "up"
         },
         {
@@ -376,7 +476,32 @@
                 "min_data_points": 21
             },
             "strength_score": 0.59,
-            "signal": "up"
+            "support_resistance": {
+                "support_levels": [
+                    51.0,
+                    50.98,
+                    50.98
+                ],
+                "resistance_levels": [
+                    51.13,
+                    51.14,
+                    51.19
+                ],
+                "nearest_support": 51.0,
+                "nearest_resistance": 51.13,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "up",
+            "target_suggestion": {
+                "conservative": 51.13,
+                "moderate": 51.27,
+                "aggressive": 51.36
+            },
+            "stoploss_suggestion": {
+                "conservative": 51.0,
+                "moderate": 51.01,
+                "aggressive": 51.06
+            }
         },
         {
             "instrument": {
@@ -430,7 +555,32 @@
                 "min_data_points": 21
             },
             "strength_score": 0.55,
-            "signal": "up"
+            "support_resistance": {
+                "support_levels": [
+                    1688.0,
+                    1685.4,
+                    1684.1
+                ],
+                "resistance_levels": [
+                    1695.0,
+                    1696.0,
+                    1696.6
+                ],
+                "nearest_support": 1688.0,
+                "nearest_resistance": 1695.0,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "up",
+            "target_suggestion": {
+                "conservative": 1695.0,
+                "moderate": 1701.52,
+                "aggressive": 1705.89
+            },
+            "stoploss_suggestion": {
+                "conservative": 1688.0,
+                "moderate": 1688.44,
+                "aggressive": 1690.62
+            }
         },
         {
             "instrument": {
@@ -484,7 +634,32 @@
                 "min_data_points": 21
             },
             "strength_score": 0.49,
-            "signal": "up"
+            "support_resistance": {
+                "support_levels": [
+                    4535.3,
+                    4530.0,
+                    4521.0
+                ],
+                "resistance_levels": [
+                    4550.0,
+                    4550.0,
+                    4550.0
+                ],
+                "nearest_support": 4535.3,
+                "nearest_resistance": 4550.0,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "up",
+            "target_suggestion": {
+                "conservative": 4550.0,
+                "moderate": 4565.86,
+                "aggressive": 4575.49
+            },
+            "stoploss_suggestion": {
+                "conservative": 4535.3,
+                "moderate": 4536.97,
+                "aggressive": 4541.79
+            }
         }
     ],
     "shortSidePosition": [
@@ -540,6 +715,21 @@
                 "min_data_points": 21
             },
             "strength_score": 1.14,
+            "support_resistance": {
+                "support_levels": [
+                    670.0,
+                    670.0,
+                    669.0
+                ],
+                "resistance_levels": [
+                    672.0,
+                    672.0,
+                    673.15
+                ],
+                "nearest_support": null,
+                "nearest_resistance": 672.0,
+                "method": "Pivot points from last 30 candles"
+            },
             "signal": "down"
         },
         {
@@ -594,7 +784,32 @@
                 "min_data_points": 21
             },
             "strength_score": 1.01,
-            "signal": "down"
+            "support_resistance": {
+                "support_levels": [
+                    229.23,
+                    229.15,
+                    227.7
+                ],
+                "resistance_levels": [
+                    230.2,
+                    230.3,
+                    230.38
+                ],
+                "nearest_support": 227.7,
+                "nearest_resistance": 230.2,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "down",
+            "target_suggestion": {
+                "conservative": 227.7,
+                "moderate": 227.27,
+                "aggressive": 226.72
+            },
+            "stoploss_suggestion": {
+                "conservative": 230.2,
+                "moderate": 228.89,
+                "aggressive": 228.62
+            }
         },
         {
             "instrument": {
@@ -648,7 +863,32 @@
                 "min_data_points": 21
             },
             "strength_score": 0.68,
-            "signal": "down"
+            "support_resistance": {
+                "support_levels": [
+                    1084.25,
+                    1083.75,
+                    1080.5
+                ],
+                "resistance_levels": [
+                    1088.3,
+                    1088.85,
+                    1088.95
+                ],
+                "nearest_support": 1080.5,
+                "nearest_resistance": 1088.3,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "down",
+            "target_suggestion": {
+                "conservative": 1080.5,
+                "moderate": 1075.43,
+                "aggressive": 1072.43
+            },
+            "stoploss_suggestion": {
+                "conservative": 1088.3,
+                "moderate": 1084.46,
+                "aggressive": 1082.95
+            }
         }
     ],
     "analysis_parameters": {
@@ -672,7 +912,7 @@
         },
         "min_data_points": 21
     },
-    "last_updated": "2025-05-26T21:33:29.311367",
+    "last_updated": "2025-05-26T22:01:57.323505",
     "total_up_signals": 9,
     "total_down_signals": 3,
     "upSidePositionCsv": "NSE:UNIONBANK,NSE:AFCONS,NSE:REDINGTON,NSE:UNOMINDA,NSE:JYOTHYLAB,NSE:NSLNISP,NSE:MAHABANK,NSE:BHARTIHEXA,NSE:SKFINDIA",
