@@ -14,19 +14,28 @@ load_dotenv(override=True)
 enctoken = os.getenv("ENCTOKEN")
 kite = KiteApp(enctoken=enctoken)
 
-EMA_PERIODS_SHORT=9
-EMA_PERIODS_LONG=21 
-
-SUPERTREND_SETTINGS_PERIOD=10
-SUPERTREND_SETTINGS_MULTIPLIER=3
-
-VOLUME_SMA_PERIOD=20
-
-DATA_PERIOD=30
-
-STRENGTH_CALCULATION_VOLUMN=30
-STRENGTH_CALCULATION_EMA_DISTANCE=30
-STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA=40
+# Global Analysis Parameters - Can be modified as needed
+ANALYSIS_PARAMS = {
+    "data_period_days": 30,
+    "candle_interval": "5minute",
+    "ema": {
+        "short_period": 9,
+        "long_period": 21
+    },
+    "supertrend": {
+        "period": 10,
+        "multiplier": 3
+    },
+    "volume": {
+        "sma_period": 20
+    },
+    "strength_weights": {
+        "volume_ratio": 0.3,
+        "ema_distance": 0.3,
+        "price_distance": 0.4
+    },
+    "min_data_points": 21  # Minimum data points required for analysis
+}
 
 symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
 df = pd.DataFrame(kite.instruments("NSE"))
@@ -47,7 +56,8 @@ def convert_numpy_types(obj):
         return [convert_numpy_types(item) for item in obj]
     return obj
 
-def calculate_supertrend(high, low, close, period=SUPERTREND_SETTINGS_PERIOD, multiplier=SUPERTREND_SETTINGS_MULTIPLIER):
+def calculate_supertrend(high, low, close, period=ANALYSIS_PARAMS['supertrend']['period'], 
+                         multiplier=ANALYSIS_PARAMS['supertrend']['multiplier']):
     # Calculate ATR
     atr = talib.ATR(high, low, close, timeperiod=period)
     
@@ -77,20 +87,20 @@ def calculate_supertrend(high, low, close, period=SUPERTREND_SETTINGS_PERIOD, mu
 
 def analyze_instrument(instrument_token, instrument_data):
     try:
-        from_datetime = datetime.datetime.now() - datetime.timedelta(days=30)
+        from_datetime = datetime.datetime.now() - datetime.timedelta(days=ANALYSIS_PARAMS['data_period_days'])
         to_datetime = datetime.datetime.now()
-        interval = "5minute"
+        interval = ANALYSIS_PARAMS['candle_interval']
         
         data = kite.historical_data(instrument_token, from_datetime, to_datetime, interval, continuous=False, oi=False)
         df = pd.DataFrame(data)
         
-        if len(df) < 21:  # Not enough data points
+        if len(df) < ANALYSIS_PARAMS['min_data_points']:  # Not enough data points
             return None
             
         # Calculate indicators
-        df['emaLow'] = talib.EMA(df['close'], timeperiod=EMA_PERIODS_SHORT)
-        df['emaHigh'] = talib.EMA(df['close'], timeperiod=EMA_PERIODS_LONG)
-        df['volume_sma'] = talib.SMA(df['volume'], timeperiod=VOLUME_SMA_PERIOD)
+        df['ema_short_period'] = talib.EMA(df['close'], timeperiod=ANALYSIS_PARAMS['ema']['short_period'])
+        df['ema_long_period'] = talib.EMA(df['close'], timeperiod=ANALYSIS_PARAMS['ema']['long_period'])
+        df['volume_sma'] = talib.SMA(df['volume'], timeperiod=ANALYSIS_PARAMS['volume']['sma_period'])
         df['supertrend'], df['supertrend_direction'], df['atr'] = calculate_supertrend(
             df['high'].values, df['low'].values, df['close'].values
         )
@@ -100,93 +110,56 @@ def analyze_instrument(instrument_token, instrument_data):
         prev = df.iloc[-2]
         
         # Calculate additional metrics for ranking
-        price_distance_from_ema = (latest['close'] - latest['emaLow']) / latest['emaLow'] * 100
+        price_distance_from_ema = (latest['close'] - latest['ema_short_period']) / latest['ema_short_period'] * 100
         volume_ratio = latest['volume'] / latest['volume_sma']
-        ema_distance = (latest['emaLow'] - latest['emaHigh']) / latest['emaHigh'] * 100
+        ema_distance = (latest['ema_short_period'] - latest['ema_long_period']) / latest['ema_long_period'] * 100
         
         # Check conditions
-        ema_cross_up = (prev['emaLow'] <= prev['emaHigh']) and (latest['emaLow'] > latest['emaHigh'])
-        ema_cross_down = (prev['emaLow'] >= prev['emaHigh']) and (latest['emaLow'] < latest['emaHigh'])
+        ema_cross_up = (prev['ema_short_period'] <= prev['ema_long_period']) and (latest['ema_short_period'] > latest['ema_long_period'])
+        ema_cross_down = (prev['ema_short_period'] >= prev['ema_long_period']) and (latest['ema_short_period'] < latest['ema_long_period'])
         volume_condition = latest['volume'] > latest['volume_sma']
         
+        # Prepare result with all calculated values
+        result = {
+            "instrument": convert_numpy_types(instrument_data.to_dict()),
+            "analysis_parameters": ANALYSIS_PARAMS,
+            "strength_score": 0
+        }
+        
+        result["instrument"]["indicators"] = {
+            "current_price": convert_numpy_types(latest['close']),
+            "ema_short_period": convert_numpy_types(latest['ema_short_period']),
+            "ema_long_period": convert_numpy_types(latest['ema_long_period']),
+            "supertrend_value": convert_numpy_types(latest['supertrend']),
+            "supertrend_direction": "up" if latest['supertrend_direction'] == 1 else "down",
+            "atr": convert_numpy_types(latest['atr']),
+            "volume": convert_numpy_types(latest['volume']),
+            "volume_sma": convert_numpy_types(latest['volume_sma']),
+            "volume_ratio": convert_numpy_types(round(volume_ratio, 2)),
+            "price_distance_from_ema": convert_numpy_types(round(price_distance_from_ema, 2)),
+            "ema_distance": convert_numpy_types(round(ema_distance, 2)),
+            "date": latest['date'].strftime('%Y-%m-%d') if hasattr(latest['date'], 'strftime') else str(latest['date'])
+        }
+        
         # Determine trend and calculate strength score
-        signal = None
-        strength = 0
         if ema_cross_up and volume_condition and latest['supertrend_direction'] == 1:
-            signal = "up"
-            strength = (volume_ratio * (STRENGTH_CALCULATION_VOLUMN/10)) + \
-                       (ema_distance * (STRENGTH_CALCULATION_EMA_DISTANCE/10)) + \
-                       (price_distance_from_ema * (STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA/10))
-        elif ema_cross_down and volume_condition and latest['supertrend_direction'] == -1:
-            signal = "down"
-            strength = (volume_ratio * (STRENGTH_CALCULATION_VOLUMN/10)) + \
-                       (abs(ema_distance) * (STRENGTH_CALCULATION_EMA_DISTANCE/10)) + \
-                       (abs(price_distance_from_ema) * (STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA/10))
-        
-        if signal:
-            # Dynamic target and stop-loss calculation
-            lookback_period = 20  # You can adjust this period
-            recent_data = df[-lookback_period:]
-            entry_price = latest['close']
-            
-            if signal == "up":
-                target_price = recent_data['high'].max()
-                stop_loss_price = recent_data['low'].min()
-            else:
-                target_price = recent_data['low'].min()
-                stop_loss_price = recent_data['high'].max()
-            
-            # Calculate risk and reward
-            if signal == "up":
-                risk = entry_price - stop_loss_price
-                reward = target_price - entry_price
-            else:
-                risk = stop_loss_price - entry_price
-                reward = entry_price - target_price
-            
-            if risk <= 0 or reward <= 0:
-                return None  # Invalid risk/reward scenario
-            
-            risk_reward_ratio = reward / risk
-            if risk_reward_ratio < 1:
-                return None  # Skip trades with risk-reward ratio less than 1
-            
-            target_percentage = (reward / entry_price) * 100
-            stop_loss_percentage = (risk / entry_price) * 100
-            
-            # Prepare result
-            result = {
-                "instrument": convert_numpy_types(instrument_data.to_dict()),
-                "signal": signal,
-                "strength_score": round(strength, 2),
-                "entry_price": round(entry_price, 2),
-                "target_price": round(target_price, 2),
-                "stop_loss_price": round(stop_loss_price, 2),
-                "risk_reward_ratio": round(risk_reward_ratio, 2),
-                "target_percentage": round(target_percentage, 2),
-                "stop_loss_percentage": round(stop_loss_percentage, 2),
-                "instrument": {
-                    "tradingsymbol": instrument_data['tradingsymbol'],
-                    "name": instrument_data['name'],
-                    "instrument_token": instrument_token,
-                    "indicators": {
-                        "current_price": round(entry_price, 2),
-                        "emaLow": round(latest['emaLow'], 2),
-                        "emaHigh": round(latest['emaHigh'], 2),
-                        "supertrend_value": round(latest['supertrend'], 2),
-                        "supertrend_direction": "up" if latest['supertrend_direction'] == 1 else "down",
-                        "atr": round(latest['atr'], 2),
-                        "volume": int(latest['volume']),
-                        "volume_sma": round(latest['volume_sma'], 2),
-                        "volume_ratio": round(volume_ratio, 2),
-                        "price_distance_from_ema": round(price_distance_from_ema, 2),
-                        "ema_distance": round(ema_distance, 2),
-                        "date": latest['date'].strftime('%Y-%m-%d') if hasattr(latest['date'], 'strftime') else str(latest['date'])
-                    }
-                }
-            }
+            # Calculate strength score for upside positions
+            strength = (volume_ratio * ANALYSIS_PARAMS['strength_weights']['volume_ratio'] + 
+                       (ema_distance * ANALYSIS_PARAMS['strength_weights']['ema_distance']) + 
+                       (price_distance_from_ema * ANALYSIS_PARAMS['strength_weights']['price_distance']))
+            result["signal"] = "up"
+            result["strength_score"] = round(strength, 2)
             return result
-        
+            
+        elif ema_cross_down and volume_condition and latest['supertrend_direction'] == -1:
+            # Calculate strength score for downside positions
+            strength = (volume_ratio * ANALYSIS_PARAMS['strength_weights']['volume_ratio'] + 
+                       (abs(ema_distance) * ANALYSIS_PARAMS['strength_weights']['ema_distance']) + 
+                       (abs(price_distance_from_ema) * ANALYSIS_PARAMS['strength_weights']['price_distance']))
+            result["signal"] = "down"
+            result["strength_score"] = round(strength, 2)
+            return result
+            
         return None
             
     except Exception as e:
@@ -235,19 +208,14 @@ def run_screener():
         response = {
             "upSidePosition": convert_numpy_types(upSidePosition),
             "shortSidePosition": convert_numpy_types(shortSidePosition),
-            "analysis_parameters": {
-                "ema_periods": {"short": EMA_PERIODS_SHORT, "long": EMA_PERIODS_LONG},
-                "supertrend_settings": {"period": SUPERTREND_SETTINGS_PERIOD, "multiplier": SUPERTREND_SETTINGS_MULTIPLIER},
-                "volume_sma_period": VOLUME_SMA_PERIOD,
-                "data_period": f"{DATA_PERIOD} days daily",
-                "strength_calculation": f"{STRENGTH_CALCULATION_VOLUMN}% volume ratio + {STRENGTH_CALCULATION_EMA_DISTANCE}% EMA distance + {STRENGTH_CALCULATION_PRICE_DISTANCE_FROM_EMA}% price distance from EMA"
-            },
+            "analysis_parameters": ANALYSIS_PARAMS,
             "last_updated": datetime.datetime.now().isoformat(),
             "total_up_signals": convert_numpy_types(len(upSidePosition)),
             "total_down_signals": convert_numpy_types(len(shortSidePosition)),
             "upSidePositionCsv": ",".join([f"NSE:{item['instrument']['tradingsymbol']}" for item in upSidePosition]),
             "shortSidePositionCsv": ",".join([f"NSE:{item['instrument']['tradingsymbol']}" for item in shortSidePosition]),
         }
+        
         with open("screener.json", "w") as f:
             json.dump(response, f, indent=4)
 

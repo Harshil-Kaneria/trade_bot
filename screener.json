@@ -1,22 +1,680 @@
 {
-    "upSidePosition": [],
-    "shortSidePosition": [],
-    "analysis_parameters": {
-        "ema_periods": {
-            "short": 9,
-            "long": 21
+    "upSidePosition": [
+        {
+            "instrument": {
+                "index": 259,
+                "instrument_token": 2752769,
+                "exchange_token": "10753",
+                "tradingsymbol": "UNIONBANK",
+                "name": "UNION BANK OF INDIA",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.01,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 140.45,
+                    "ema_short_period": 140.36734264756575,
+                    "ema_long_period": 140.36437394652424,
+                    "supertrend_value": 139.77390812784634,
+                    "supertrend_direction": "up",
+                    "atr": 0.2736972907178815,
+                    "volume": 507592,
+                    "volume_sma": 159133.35,
+                    "volume_ratio": 3.19,
+                    "price_distance_from_ema": 0.06,
+                    "ema_distance": 0.0,
+                    "date": "2025-05-26"
+                }
+            },
+            "analysis_parameters": {
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21
+            },
+            "strength_score": 0.98,
+            "signal": "up"
         },
-        "supertrend_settings": {
+        {
+            "instrument": {
+                "index": 476,
+                "instrument_token": 6650113,
+                "exchange_token": "25977",
+                "tradingsymbol": "AFCONS",
+                "name": "AFCONS INFRASTRUCTURE",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.05,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 435.5,
+                    "ema_short_period": 433.9407365675123,
+                    "ema_long_period": 433.8183391315042,
+                    "supertrend_value": 430.72170433128724,
+                    "supertrend_direction": "up",
+                    "atr": 1.0927652229042442,
+                    "volume": 68358,
+                    "volume_sma": 27497.1,
+                    "volume_ratio": 2.49,
+                    "price_distance_from_ema": 0.36,
+                    "ema_distance": 0.03,
+                    "date": "2025-05-26"
+                }
+            },
+            "analysis_parameters": {
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21
+            },
+            "strength_score": 0.9,
+            "signal": "up"
+        },
+        {
+            "instrument": {
+                "index": 339,
+                "instrument_token": 3649281,
+                "exchange_token": "14255",
+                "tradingsymbol": "REDINGTON",
+                "name": "REDINGTON",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.01,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 267.99,
+                    "ema_short_period": 266.91436491015526,
+                    "ema_long_period": 266.83542701077266,
+                    "supertrend_value": 264.97626297535686,
+                    "supertrend_direction": "up",
+                    "atr": 0.7829123415477126,
+                    "volume": 65027,
+                    "volume_sma": 33346.85,
+                    "volume_ratio": 1.95,
+                    "price_distance_from_ema": 0.4,
+                    "ema_distance": 0.03,
+                    "date": "2025-05-26"
+                }
+            },
+            "analysis_parameters": {
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21
+            },
+            "strength_score": 0.76,
+            "signal": "up"
+        },
+        {
+            "instrument": {
+                "index": 336,
+                "instrument_token": 3623425,
+                "exchange_token": "14154",
+                "tradingsymbol": "UNOMINDA",
+                "name": "UNO MINDA",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.05,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 1020.0,
+                    "ema_short_period": 1013.9347713201854,
+                    "ema_long_period": 1013.153153147289,
+                    "supertrend_value": 1006.8331173152546,
+                    "supertrend_direction": "up",
+                    "atr": 3.072294228248431,
+                    "volume": 6298,
+                    "volume_sma": 4404.7,
+                    "volume_ratio": 1.43,
+                    "price_distance_from_ema": 0.6,
+                    "ema_distance": 0.08,
+                    "date": "2025-05-26"
+                }
+            },
+            "analysis_parameters": {
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21
+            },
+            "strength_score": 0.69,
+            "signal": "up"
+        },
+        {
+            "instrument": {
+                "index": 359,
+                "instrument_token": 3877377,
+                "exchange_token": "15146",
+                "tradingsymbol": "JYOTHYLAB",
+                "name": "JYOTHY LABS",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.05,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 339.0,
+                    "ema_short_period": 337.97679842448156,
+                    "ema_long_period": 337.9726357894874,
+                    "supertrend_value": 336.4597611440336,
+                    "supertrend_direction": "up",
+                    "atr": 0.6884129519887823,
+                    "volume": 7519,
+                    "volume_sma": 4398.5,
+                    "volume_ratio": 1.71,
+                    "price_distance_from_ema": 0.3,
+                    "ema_distance": 0.0,
+                    "date": "2025-05-26"
+                }
+            },
+            "analysis_parameters": {
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21
+            },
+            "strength_score": 0.63,
+            "signal": "up"
+        },
+        {
+            "instrument": {
+                "index": 337,
+                "instrument_token": 3630081,
+                "exchange_token": "14180",
+                "tradingsymbol": "NSLNISP",
+                "name": "NMDC STEEL",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.01,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 39.65,
+                    "ema_short_period": 39.532070836099855,
+                    "ema_long_period": 39.523649279795215,
+                    "supertrend_value": 39.21711090544208,
+                    "supertrend_direction": "up",
+                    "atr": 0.11096303151930711,
+                    "volume": 70428,
+                    "volume_sma": 42731.4,
+                    "volume_ratio": 1.65,
+                    "price_distance_from_ema": 0.3,
+                    "ema_distance": 0.02,
+                    "date": "2025-05-26"
+                }
+            },
+            "analysis_parameters": {
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21
+            },
+            "strength_score": 0.62,
+            "signal": "up"
+        },
+        {
+            "instrument": {
+                "index": 276,
+                "instrument_token": 2912513,
+                "exchange_token": "11377",
+                "tradingsymbol": "MAHABANK",
+                "name": "BANK OF MAHARASHTRA",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.01,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 51.1,
+                    "ema_short_period": 51.065365299436806,
+                    "ema_long_period": 51.06106571416579,
+                    "supertrend_value": 50.85939993177302,
+                    "supertrend_direction": "up",
+                    "atr": 0.08686668940899592,
+                    "volume": 180318,
+                    "volume_sma": 96228.55,
+                    "volume_ratio": 1.87,
+                    "price_distance_from_ema": 0.07,
+                    "ema_distance": 0.01,
+                    "date": "2025-05-26"
+                }
+            },
+            "analysis_parameters": {
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21
+            },
+            "strength_score": 0.59,
+            "signal": "up"
+        },
+        {
+            "instrument": {
+                "index": 452,
+                "instrument_token": 6013185,
+                "exchange_token": "23489",
+                "tradingsymbol": "BHARTIHEXA",
+                "name": "BHARTI HEXACOM",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.1,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 1692.8,
+                    "ema_short_period": 1691.3824630499528,
+                    "ema_long_period": 1691.2775193945158,
+                    "supertrend_value": 1679.214696103135,
+                    "supertrend_direction": "up",
+                    "atr": 4.361767965621619,
+                    "volume": 3431,
+                    "volume_sma": 1999.6,
+                    "volume_ratio": 1.72,
+                    "price_distance_from_ema": 0.08,
+                    "ema_distance": 0.01,
+                    "date": "2025-05-26"
+                }
+            },
+            "analysis_parameters": {
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21
+            },
+            "strength_score": 0.55,
+            "signal": "up"
+        },
+        {
+            "instrument": {
+                "index": 143,
+                "instrument_token": 815617,
+                "exchange_token": "3186",
+                "tradingsymbol": "SKFINDIA",
+                "name": "SKF INDIA",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.1,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 4546.6,
+                    "ema_short_period": 4543.390274918606,
+                    "ema_long_period": 4543.124160041809,
+                    "supertrend_value": 4516.111893315397,
+                    "supertrend_direction": "up",
+                    "atr": 9.629368894867701,
+                    "volume": 1014,
+                    "volume_sma": 656.35,
+                    "volume_ratio": 1.54,
+                    "price_distance_from_ema": 0.07,
+                    "ema_distance": 0.01,
+                    "date": "2025-05-26"
+                }
+            },
+            "analysis_parameters": {
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21
+            },
+            "strength_score": 0.49,
+            "signal": "up"
+        }
+    ],
+    "shortSidePosition": [
+        {
+            "instrument": {
+                "index": 182,
+                "instrument_token": 1240833,
+                "exchange_token": "4847",
+                "tradingsymbol": "KIMS",
+                "name": "KRISHNA INST OF MED SCI L",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.05,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 665.5,
+                    "ema_short_period": 670.2549253148437,
+                    "ema_long_period": 670.6591715157975,
+                    "supertrend_value": 673.8049170288465,
+                    "supertrend_direction": "down",
+                    "atr": 1.8599723429488229,
+                    "volume": 8391,
+                    "volume_sma": 3007.15,
+                    "volume_ratio": 2.79,
+                    "price_distance_from_ema": -0.71,
+                    "ema_distance": -0.06,
+                    "date": "2025-05-26"
+                }
+            },
+            "analysis_parameters": {
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21
+            },
+            "strength_score": 1.14,
+            "signal": "down"
+        },
+        {
+            "instrument": {
+                "index": 101,
+                "instrument_token": 470529,
+                "exchange_token": "1838",
+                "tradingsymbol": "KARURVYSYA",
+                "name": "KARUR VYSYA BANK",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.01,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 228.35,
+                    "ema_short_period": 229.621242803584,
+                    "ema_long_period": 229.70463755165662,
+                    "supertrend_value": 230.71638454169513,
+                    "supertrend_direction": "down",
+                    "atr": 0.5421281805650559,
+                    "volume": 76273,
+                    "volume_sma": 29312.45,
+                    "volume_ratio": 2.6,
+                    "price_distance_from_ema": -0.55,
+                    "ema_distance": -0.04,
+                    "date": "2025-05-26"
+                }
+            },
+            "analysis_parameters": {
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21
+            },
+            "strength_score": 1.01,
+            "signal": "down"
+        },
+        {
+            "instrument": {
+                "index": 202,
+                "instrument_token": 1517057,
+                "exchange_token": "5926",
+                "tradingsymbol": "INTELLECT",
+                "name": "INTELLECT DESIGN ARENA",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.05,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 1081.45,
+                    "ema_short_period": 1085.373589389015,
+                    "ema_long_period": 1085.894834227631,
+                    "supertrend_value": 1092.7496379875897,
+                    "supertrend_direction": "down",
+                    "atr": 3.0082126625299592,
+                    "volume": 6352,
+                    "volume_sma": 3646.75,
+                    "volume_ratio": 1.74,
+                    "price_distance_from_ema": -0.36,
+                    "ema_distance": -0.05,
+                    "date": "2025-05-26"
+                }
+            },
+            "analysis_parameters": {
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21
+            },
+            "strength_score": 0.68,
+            "signal": "down"
+        }
+    ],
+    "analysis_parameters": {
+        "data_period_days": 30,
+        "candle_interval": "5minute",
+        "ema": {
+            "short_period": 9,
+            "long_period": 21
+        },
+        "supertrend": {
             "period": 10,
             "multiplier": 3
         },
-        "volume_sma_period": 20,
-        "data_period": "30 days daily",
-        "strength_calculation": "30% volume ratio + 50% EMA distance + 20% price distance from EMA"
+        "volume": {
+            "sma_period": 20
+        },
+        "strength_weights": {
+            "volume_ratio": 0.3,
+            "ema_distance": 0.3,
+            "price_distance": 0.4
+        },
+        "min_data_points": 21
     },
-    "last_updated": "2025-05-23T12:48:39.339899",
-    "total_up_signals": 0,
-    "total_down_signals": 0,
-    "upSidePositionCsv": "",
-    "shortSidePositionCsv": ""
+    "last_updated": "2025-05-26T21:33:29.311367",
+    "total_up_signals": 9,
+    "total_down_signals": 3,
+    "upSidePositionCsv": "NSE:UNIONBANK,NSE:AFCONS,NSE:REDINGTON,NSE:UNOMINDA,NSE:JYOTHYLAB,NSE:NSLNISP,NSE:MAHABANK,NSE:BHARTIHEXA,NSE:SKFINDIA",
+    "shortSidePositionCsv": "NSE:KIMS,NSE:KARURVYSYA,NSE:INTELLECT"
 }
