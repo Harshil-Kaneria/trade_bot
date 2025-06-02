@@ -6,8 +6,7 @@ import datetime
 import talib
 import numpy as np
 import json
-import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 
 # Load environment variables
 load_dotenv(override=True)
@@ -34,7 +33,9 @@ ANALYSIS_PARAMS = {
         "ema_distance": 0.3,
         "price_distance": 0.4
     },
-    "min_data_points": 21  # Minimum data points required for analysis
+    "min_data_points": 21,  # Minimum data points required for analysis
+    "batch_size": 5,       # Number of stocks to process before delay
+    "api_delay": 0.5        # Delay between batches in seconds
 }
 
 symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
@@ -261,33 +262,25 @@ def run_screener():
 
         upSidePosition = []
         shortSidePosition = []
+        total_symbols = len(df)
         
-        # Create thread-safe lists
-        upSidePosition_lock = threading.Lock()
-        shortSidePosition_lock = threading.Lock()
-        
-        def process_row(row):
+        for i, row in df.iterrows():
+            symbol = row['tradingsymbol']
+            print(f"Processing {symbol} ({i+1}/{total_symbols})...")
+            
             result = analyze_instrument(row['instrument_token'], row)
             
             if result and result["signal"] == "up":
-                with upSidePosition_lock:
-                    upSidePosition.append(convert_numpy_types(result))
-                print(f"Scanned {row['tradingsymbol']} + Buy Signal")
+                upSidePosition.append(convert_numpy_types(result))
+                print(f"  → Buy Signal found for {symbol}")
             elif result and result["signal"] == "down":
-                with shortSidePosition_lock:
-                    shortSidePosition.append(convert_numpy_types(result))
-                print(f"Scanned {row['tradingsymbol']} - Sell Signal")
-            else:
-                print(f"Scanned {row['tradingsymbol']}")
-        
-        # Using ThreadPoolExecutor for parallel processing
-        with ThreadPoolExecutor(max_workers=(os.cpu_count() * 5)) as executor:
-            # Submit all tasks to the executor
-            futures = [executor.submit(process_row, row) for _, row in df.iterrows()]
+                shortSidePosition.append(convert_numpy_types(result))
+                print(f"  → Sell Signal found for {symbol}")
             
-            # Wait for all tasks to complete
-            for future in as_completed(futures):
-                future.result()  # This will raise exceptions if any occurred
+            # Add delay after every 10 stocks
+            if (i + 1) % ANALYSIS_PARAMS['batch_size'] == 0 and (i + 1) < total_symbols:
+                print(f"Completed {i+1} stocks. Waiting {ANALYSIS_PARAMS['api_delay']} seconds...")
+                time.sleep(ANALYSIS_PARAMS['api_delay'])
         
         # Sort by strength score (descending)
         upSidePosition.sort(key=lambda x: x['strength_score'], reverse=True)
@@ -311,10 +304,11 @@ def run_screener():
         end_time = datetime.datetime.now()
         duration = (end_time - start_time).total_seconds()
         print(f"\nScanning completed in {duration:.2f} seconds")
-        print("\nScan saved to screener.json")
+        print(f"Found {len(upSidePosition)} buy signals and {len(shortSidePosition)} sell signals")
+        print("Results saved to screener.json")
  
     except Exception as e:
-        print(f"\nError {str(e)}")
+        print(f"\nError: {str(e)}")
 
 if __name__ == "__main__":
     run_screener()

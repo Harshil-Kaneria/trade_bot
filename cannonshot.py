@@ -23,7 +23,8 @@ CANNONSHOT_PARAMS = {
     "min_volume_multiplier": 2.0,
     "min_delivery_multiplier": 2.0,
     "min_data_points": 21,
-    "api_delay": 0.5  # Delay between API calls in seconds
+    "batch_size": 5,  # Number of stocks to scan before delay
+    "api_delay": 0.5  # Delay between batches in seconds
 }
 
 symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
@@ -124,8 +125,10 @@ def run_cannonshot_screener():
                 cannonshot_stocks.append(result)
                 print(f"  → Cannonshot signal found for {symbol}")
             
-            # Add delay to avoid rate limiting
-            time.sleep(CANNONSHOT_PARAMS['api_delay'])
+            # Add delay after every batch of 10 stocks
+            if (i + 1) % CANNONSHOT_PARAMS['batch_size'] == 0:
+                print(f"Completed batch of {CANNONSHOT_PARAMS['batch_size']} stocks. Waiting {CANNONSHOT_PARAMS['api_delay']} seconds...")
+                time.sleep(CANNONSHOT_PARAMS['api_delay'])
         
         # Prepare response
         response = {
