@@ -24,7 +24,10 @@ CANNONSHOT_PARAMS = {
     "min_delivery_multiplier": 2.0,
     "min_data_points": 21,
     "batch_size": 5,  # Number of stocks to scan before delay
-    "api_delay": 0.5  # Delay between batches in seconds
+    "api_delay": 0.5,  # Delay between batches in seconds
+    "only_up": False,  # If True, filter out stocks showing downward movement
+    "downward_threshold": -0.5,  # Percentage threshold for downward movement (negative means down)
+    "lookback_period": 3  # Number of recent candles to check for downward movement
 }
 
 symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
@@ -46,6 +49,27 @@ def convert_numpy_types(obj):
         return [convert_numpy_types(item) for item in obj]
     return obj
 
+def check_downward_movement(daily_df):
+    """Check if the stock is showing downward movement in recent candles"""
+    if len(daily_df) < CANNONSHOT_PARAMS['lookback_period'] + 1:
+        return False
+        
+    recent_candles = daily_df.iloc[-CANNONSHOT_PARAMS['lookback_period']-1:-1]
+    price_changes = []
+    
+    for i in range(len(recent_candles)-1):
+        prev_close = recent_candles.iloc[i]['close']
+        current_close = recent_candles.iloc[i+1]['close']
+        change_pct = ((current_close - prev_close) / prev_close) * 100
+        price_changes.append(change_pct)
+    
+    # Calculate average percentage change
+    if not price_changes:
+        return False
+        
+    avg_change = sum(price_changes) / len(price_changes)
+    return avg_change <= CANNONSHOT_PARAMS['downward_threshold']
+
 def analyze_cannonshot(instrument_token, instrument_data):
     try:
         # Get daily data
@@ -61,6 +85,10 @@ def analyze_cannonshot(instrument_token, instrument_data):
         weekly_df = pd.DataFrame(weekly_data)
         
         if len(daily_df) < CANNONSHOT_PARAMS['min_data_points'] or len(weekly_df) < 4:
+            return None
+            
+        # Check for downward movement if ONLY_UP is True
+        if CANNONSHOT_PARAMS['only_up'] and check_downward_movement(daily_df):
             return None
             
         # Calculate indicators for daily data
