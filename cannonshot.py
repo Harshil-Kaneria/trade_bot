@@ -7,6 +7,9 @@ import talib
 import numpy as np
 import json
 import time
+import requests
+import urllib.parse
+from bs4 import BeautifulSoup
 
 # Load environment variables
 load_dotenv(override=True)
@@ -15,6 +18,8 @@ kite = KiteApp(enctoken=enctoken)
 
 # Cannonshot Screener Parameters
 CANNONSHOT_PARAMS = {
+    'ISSCOREFILTER':True,
+    'SCORE':60,  
     "data_period_days": 30,
     "daily_candle_interval": "day",
     "weekly_candle_interval": "week",
@@ -30,10 +35,50 @@ CANNONSHOT_PARAMS = {
     "lookback_period": 3  # Number of recent candles to check for downward movement
 }
 
-symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
+# symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
+symbols_list = list(pd.read_csv('data_test.csv')['SYMBOL'])
 df = pd.DataFrame(kite.instruments("NSE"))
 df = df[df["tradingsymbol"].isin(symbols_list)].reset_index(drop=True)
 df = df[df["segment"]!="INDICES"].reset_index()
+
+
+def get_moneycontrol_link(name: str):
+    # Clean and encode query
+    query = urllib.parse.quote(name.strip())
+    
+    # Correct API URL
+    url = f"https://www.moneycontrol.com/mccode/common/autosuggestion_solr.php?classic=true&query={query}&type=1&format=json"
+    
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            return None
+
+        data = resp.json()
+        if not data:
+            return None
+
+        # Return the first match's link
+        return data[0].get("link_src")
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+def scrape_score_from_page(url):
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        res = requests.get(url, headers=headers, timeout=10)
+        if res.status_code != 200:
+            return None
+        soup = BeautifulSoup(res.text, "html.parser")
+        score_div = soup.select_one("div.score")
+        if score_div:
+            raw_text = score_div.text.strip()
+            score = raw_text.split("/")[0]  # "71/100" -> "71"
+            return int(score)
+        return None
+    except Exception as e:
+        return None
 
 def convert_numpy_types(obj):
     """Convert numpy types to native Python types for JSON serialization"""
@@ -117,6 +162,23 @@ def analyze_cannonshot(instrument_token, instrument_data):
         if (volume_condition and delivery_condition and close_above_prev_high and 
             close_above_week_high and rsi_crossed and rsi_overbought):
             
+            symbol = instrument_data['name']
+            print(f"Fetching Moneycontrol link for {symbol}...")
+            link = get_moneycontrol_link(symbol)
+            score = None
+            time.sleep(2)
+            if link:
+                print(f"  Got link: {link}")
+                score = scrape_score_from_page(link)
+                print(f"  Score: {score}")
+                time.sleep(2)
+            else:
+                print("No link found")
+
+            if CANNONSHOT_PARAMS['ISSCOREFILTER'] and score is not None and score < CANNONSHOT_PARAMS['SCORE']:
+                print(f"  Score below {CANNONSHOT_PARAMS['SCORE']} ({score}), filtering out...")
+                return None  # Skip this instrument
+                    
             result = {
                 "instrument": convert_numpy_types(instrument_data.to_dict()),
                 "current_price": convert_numpy_types(latest_daily['close']),
@@ -127,7 +189,8 @@ def analyze_cannonshot(instrument_token, instrument_data):
                 "rsi": convert_numpy_types(round(latest_daily['rsi'], 2)),
                 "prev_high": convert_numpy_types(latest_daily['prev_high']),
                 "prev_week_high": convert_numpy_types(prev_weekly['high']),
-                "date": latest_daily['date'].strftime('%Y-%m-%d') if hasattr(latest_daily['date'], 'strftime') else str(latest_daily['date'])
+                "date": latest_daily['date'].strftime('%Y-%m-%d') if hasattr(latest_daily['date'], 'strftime') else str(latest_daily['date']),
+                "score":score
             }
             return result
             
