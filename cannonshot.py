@@ -164,14 +164,14 @@ def analyze_cannonshot(instrument_token, instrument_data):
             
             symbol = instrument_data['name']
             print(f"Fetching Moneycontrol link for {symbol}...")
+            time.sleep(2)
             link = get_moneycontrol_link(symbol)
             score = None
-            time.sleep(2)
             if link:
                 print(f"  Got link: {link}")
+                time.sleep(2)
                 score = scrape_score_from_page(link)
                 print(f"  Score: {score}")
-                time.sleep(2)
             else:
                 print("No link found")
 
@@ -220,6 +220,8 @@ def run_cannonshot_screener():
             if (i + 1) % CANNONSHOT_PARAMS['batch_size'] == 0:
                 print(f"Completed batch of {CANNONSHOT_PARAMS['batch_size']} stocks. Waiting {CANNONSHOT_PARAMS['api_delay']} seconds...")
                 time.sleep(CANNONSHOT_PARAMS['api_delay'])
+
+        cannonshot_stocks.sort(key=lambda x: (x.get('score') is None, -x.get('score', 0)))
         
         # Prepare response
         response = {

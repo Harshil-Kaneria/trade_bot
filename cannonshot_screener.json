@@ -16,43 +16,16 @@
                 "segment": "NSE",
                 "exchange": "NSE"
             },
-            "current_price": 3375.0,
-            "volume": 1732418,
-            "volume_ma": 386738.45,
-            "volume_ratio": 4.48,
-            "delivery_ratio": 4.48,
-            "rsi": 72.94,
+            "current_price": 3341.4,
+            "volume": 1739609,
+            "volume_ma": 387098.0,
+            "volume_ratio": 4.49,
+            "delivery_ratio": 4.49,
+            "rsi": 70.97,
             "prev_high": 3241.6,
-            "prev_week_high": 3241.6,
+            "prev_week_high": 3295.0,
             "date": "2025-06-27",
             "score": 71
-        },
-        {
-            "instrument": {
-                "index": 4,
-                "instrument_token": 3397121,
-                "exchange_token": "13270",
-                "tradingsymbol": "JKCEMENT",
-                "name": "JK CEMENT",
-                "last_price": 0.0,
-                "expiry": null,
-                "strike": 0.0,
-                "tick_size": 0.5,
-                "lot_size": 1,
-                "instrument_type": "EQ",
-                "segment": "NSE",
-                "exchange": "NSE"
-            },
-            "current_price": 6360.0,
-            "volume": 424220,
-            "volume_ma": 176317.3,
-            "volume_ratio": 2.41,
-            "delivery_ratio": 2.41,
-            "rsi": 75.13,
-            "prev_high": 6105.0,
-            "prev_week_high": 6105.0,
-            "date": "2025-06-27",
-            "score": 75
         },
         {
             "instrument": {
@@ -70,14 +43,14 @@
                 "segment": "NSE",
                 "exchange": "NSE"
             },
-            "current_price": 4800.0,
-            "volume": 389002,
-            "volume_ma": 156919.95,
+            "current_price": 4826.8,
+            "volume": 389456,
+            "volume_ma": 156942.65,
             "volume_ratio": 2.48,
             "delivery_ratio": 2.48,
-            "rsi": 70.6,
+            "rsi": 71.37,
             "prev_high": 4747.0,
-            "prev_week_high": 4774.0,
+            "prev_week_high": 4795.5,
             "date": "2025-06-27",
             "score": 71
         },
@@ -97,14 +70,14 @@
                 "segment": "NSE",
                 "exchange": "NSE"
             },
-            "current_price": 6099.0,
-            "volume": 197509,
-            "volume_ma": 38827.8,
+            "current_price": 6114.0,
+            "volume": 197557,
+            "volume_ma": 38830.2,
             "volume_ratio": 5.09,
             "delivery_ratio": 5.09,
-            "rsi": 70.05,
+            "rsi": 70.72,
             "prev_high": 5968.5,
-            "prev_week_high": 5968.5,
+            "prev_week_high": 5749.0,
             "date": "2025-06-27",
             "score": 64
         }
@@ -126,7 +99,7 @@
         "downward_threshold": -0.5,
         "lookback_period": 3
     },
-    "last_updated": "2025-06-27T23:07:45.275894",
-    "total_signals": 4,
-    "cannonshot_stocks_csv": "NSE:TORNTPHARM,NSE:JKCEMENT,NSE:NAVINFLUOR,NSE:BAYERCROP"
+    "last_updated": "2025-06-28T09:45:47.906202",
+    "total_signals": 3,
+    "cannonshot_stocks_csv": "NSE:TORNTPHARM,NSE:NAVINFLUOR,NSE:BAYERCROP"
 }
