@@ -221,7 +221,7 @@ def run_cannonshot_screener():
                 print(f"Completed batch of {CANNONSHOT_PARAMS['batch_size']} stocks. Waiting {CANNONSHOT_PARAMS['api_delay']} seconds...")
                 time.sleep(CANNONSHOT_PARAMS['api_delay'])
 
-        cannonshot_stocks.sort(key=lambda x: (x.get('score') is None, -x.get('score', 0)))
+        cannonshot_stocks.sort(key=lambda x: (x.get('score') is None, -(x.get('score') or 0)))
         
         # Prepare response
         response = {

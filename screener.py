@@ -38,7 +38,7 @@ ANALYSIS_PARAMS = {
     "api_delay": 0.5        # Delay between batches in seconds
 }
 
-symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
+symbols_list = list(pd.read_csv('data.csv')['SYMBOL'])
 df = pd.DataFrame(kite.instruments("NSE"))
 df = df[df["tradingsymbol"].isin(symbols_list)].reset_index(drop=True)
 df = df[df["segment"]!="INDICES"].reset_index()

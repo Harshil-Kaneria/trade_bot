@@ -1,346 +1,346 @@
 {
     "statics": {
-        "advanced": 9,
-        "declined": 40,
-        "unchanged": 1
+        "advanced": 27,
+        "declined": 23,
+        "unchanged": 0
     },
     "index_df": [
         {
             "tradingsymbol": "NIFTY 50",
-            "LTP": 22937.9,
-            "ChangePrev%": -1.3427899234841878,
+            "LTP": 25637.8,
+            "ChangePrev%": 0.3475674194684695,
             "instrument_token": 256265
         },
         {
             "tradingsymbol": "NIFTY BANK",
-            "LTP": 51578.55,
-            "ChangePrev%": -0.036435979754765764,
+            "LTP": 57443.9,
+            "ChangePrev%": 0.4146367470943165,
             "instrument_token": 260105
         }
     ],
     "gainers_df": [
         {
-            "tradingsymbol": "HDFCBANK",
-            "LTP": 1831.6,
-            "ChangePrev%": 2.0475248628019056,
-            "Volume": 6066851,
-            "Volatility": 1.7015995587424233,
-            "instrument_token": 341249,
-            "TradedValue": 11089354268.859999
+            "tradingsymbol": "ASIANPAINT",
+            "LTP": 2362.0,
+            "ChangePrev%": 3.153113809066286,
+            "Volume": 0,
+            "Volatility": 3.8282961016206785,
+            "instrument_token": 60417,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "TATACONSUM",
-            "LTP": 1088.05,
-            "ChangePrev%": 1.5919701213818818,
-            "Volume": 1451292,
-            "Volatility": 2.778168848843203,
-            "instrument_token": 878593,
-            "TradedValue": 1573911661.08
+            "tradingsymbol": "APOLLOHOSP",
+            "LTP": 7310.0,
+            "ChangePrev%": 2.9359994367387174,
+            "Volume": 0,
+            "Volatility": 2.8962131837307155,
+            "instrument_token": 40193,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "BRITANNIA",
-            "LTP": 5124.6,
-            "ChangePrev%": 1.0081896934039074,
-            "Volume": 83191,
-            "Volatility": 2.2827285460270716,
-            "instrument_token": 140033,
-            "TradedValue": 423188457.45
+            "tradingsymbol": "INDUSINDBK",
+            "LTP": 860.3,
+            "ChangePrev%": 2.894390623131196,
+            "Volume": 0,
+            "Volatility": 5.921052631578947,
+            "instrument_token": 1346049,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "NESTLEIND",
-            "LTP": 2265.55,
-            "ChangePrev%": 0.886157682630868,
-            "Volume": 178696,
-            "Volatility": 2.2717099373321394,
-            "instrument_token": 4598529,
-            "TradedValue": 402469852.96000004
+            "tradingsymbol": "ULTRACEMCO",
+            "LTP": 12240.0,
+            "ChangePrev%": 2.418207681365576,
+            "Volume": 0,
+            "Volatility": 2.7462437395659434,
+            "instrument_token": 2952193,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "BAJFINANCE",
-            "LTP": 8666.05,
-            "ChangePrev%": 0.8313359551346067,
-            "Volume": 583719,
-            "Volatility": 1.5151340110905898,
-            "instrument_token": 81153,
-            "TradedValue": 5049723883.05
+            "tradingsymbol": "ADANIENT",
+            "LTP": 2644.8,
+            "ChangePrev%": 2.265872708993905,
+            "Volume": 0,
+            "Volatility": 3.848977856784013,
+            "instrument_token": 6401,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "HINDUNILVR",
-            "LTP": 2257.5,
-            "ChangePrev%": 0.576953064088562,
-            "Volume": 358167,
-            "Volatility": 1.7937219730941705,
-            "instrument_token": 356865,
-            "TradedValue": 804271161.84
+            "tradingsymbol": "POWERGRID",
+            "LTP": 299.0,
+            "ChangePrev%": 1.8739352640545146,
+            "Volume": 0,
+            "Volatility": 2.2203389830508513,
+            "instrument_token": 3834113,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "SHRIRAMFIN",
-            "LTP": 655.5,
-            "ChangePrev%": 0.20637468470534628,
-            "Volume": 1424719,
-            "Volatility": 1.1823035850495804,
-            "instrument_token": 1102337,
-            "TradedValue": 931865956.33
+            "tradingsymbol": "BEL",
+            "LTP": 416.4,
+            "ChangePrev%": 1.5362106803218616,
+            "Volume": 0,
+            "Volatility": 1.7783191230207094,
+            "instrument_token": 98049,
+            "TradedValue": 0.0
         }
     ],
     "losers_df": [
         {
-            "tradingsymbol": "CIPLA",
-            "LTP": 1391.5,
-            "ChangePrev%": -6.966637694724881,
-            "Volume": 724158,
-            "Volatility": 7.063582269171631,
-            "instrument_token": 177665,
-            "TradedValue": 1035031787.8199999
-        },
-        {
-            "tradingsymbol": "ONGC",
-            "LTP": 226.45,
-            "ChangePrev%": -6.929431589330489,
-            "Volume": 15230419,
-            "Volatility": 6.214665779847031,
-            "instrument_token": 633601,
-            "TradedValue": 3512743838.16
-        },
-        {
-            "tradingsymbol": "HINDALCO",
-            "LTP": 608.25,
-            "ChangePrev%": -6.8030337853367016,
-            "Volume": 3183258,
-            "Volatility": 5.7131782945736465,
-            "instrument_token": 348929,
-            "TradedValue": 1980400299.54
+            "tradingsymbol": "TATACONSUM",
+            "LTP": 1121.0,
+            "ChangePrev%": -2.1302601711192675,
+            "Volume": 0,
+            "Volatility": 2.3776223776223815,
+            "instrument_token": 878593,
+            "TradedValue": 0.0
         },
         {
             "tradingsymbol": "DRREDDY",
-            "LTP": 1078.6,
-            "ChangePrev%": -6.326805332406976,
-            "Volume": 1654099,
-            "Volatility": 6.871852752213934,
+            "LTP": 1302.5,
+            "ChangePrev%": -1.4377601210745365,
+            "Volume": 0,
+            "Volatility": 2.4983068703438795,
             "instrument_token": 225537,
-            "TradedValue": 1829152297.1699998
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "SUNPHARMA",
-            "LTP": 1661.0,
-            "ChangePrev%": -6.15819209039548,
-            "Volume": 1578491,
-            "Volatility": 6.681282851280317,
-            "instrument_token": 857857,
-            "TradedValue": 2690174856.57
+            "tradingsymbol": "WIPRO",
+            "LTP": 265.4,
+            "ChangePrev%": -1.161924623864146,
+            "Volume": 0,
+            "Volatility": 2.0446096654275094,
+            "instrument_token": 969473,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "TATASTEEL",
-            "LTP": 144.19,
-            "ChangePrev%": -6.138523629735715,
-            "Volume": 19894542,
-            "Volatility": 5.910103525095014,
-            "instrument_token": 895745,
-            "TradedValue": 2936434399.2
+            "tradingsymbol": "SBILIFE",
+            "LTP": 1843.0,
+            "ChangePrev%": -0.9565778159931189,
+            "Volume": 0,
+            "Volatility": 2.575757575757583,
+            "instrument_token": 5582849,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "TATAMOTORS",
-            "LTP": 617.5,
-            "ChangePrev%": -5.5738206284884235,
-            "Volume": 10867165,
-            "Volatility": 5.22307692307693,
-            "instrument_token": 884737,
-            "TradedValue": 6805996767.849999
+            "tradingsymbol": "BAJAJFINSV",
+            "LTP": 2036.0,
+            "ChangePrev%": -0.8570315543435872,
+            "Volume": 0,
+            "Volatility": 2.912621359223301,
+            "instrument_token": 4268801,
+            "TradedValue": 0.0
+        },
+        {
+            "tradingsymbol": "AXISBANK",
+            "LTP": 1223.0,
+            "ChangePrev%": -0.8512363194162952,
+            "Volume": 0,
+            "Volatility": 2.150537634408595,
+            "instrument_token": 1510401,
+            "TradedValue": 0.0
+        },
+        {
+            "tradingsymbol": "BAJFINANCE",
+            "LTP": 944.0,
+            "ChangePrev%": -0.7882291119285338,
+            "Volume": 0,
+            "Volatility": 2.473684210526316,
+            "instrument_token": 81153,
+            "TradedValue": 0.0
         }
     ],
     "most_active_value_df": [
         {
-            "tradingsymbol": "HDFCBANK",
-            "LTP": 1831.6,
-            "ChangePrev%": 2.0475248628019056,
-            "Volume": 6066851,
-            "Volatility": 1.7015995587424233,
-            "instrument_token": 341249,
-            "TradedValue": 11089354268.859999
+            "tradingsymbol": "ADANIENT",
+            "LTP": 2644.8,
+            "ChangePrev%": 2.265872708993905,
+            "Volume": 0,
+            "Volatility": 3.848977856784013,
+            "instrument_token": 6401,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "TATAMOTORS",
-            "LTP": 617.5,
-            "ChangePrev%": -5.5738206284884235,
-            "Volume": 10867165,
-            "Volatility": 5.22307692307693,
-            "instrument_token": 884737,
-            "TradedValue": 6805996767.849999
+            "tradingsymbol": "LT",
+            "LTP": 3678.9,
+            "ChangePrev%": 0.5273800415345988,
+            "Volume": 0,
+            "Volatility": 1.8117326057298797,
+            "instrument_token": 2939649,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "RELIANCE",
-            "LTP": 1208.6,
-            "ChangePrev%": -3.211339793385131,
-            "Volume": 5340374,
-            "Volatility": 3.0174844895657116,
-            "instrument_token": 738561,
-            "TradedValue": 6525349586.860001
+            "tradingsymbol": "TATASTEEL",
+            "LTP": 161.29,
+            "ChangePrev%": 0.4671732901457581,
+            "Volume": 0,
+            "Volatility": 1.6149068322981508,
+            "instrument_token": 895745,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "BAJFINANCE",
-            "LTP": 8666.05,
-            "ChangePrev%": 0.8313359551346067,
-            "Volume": 583719,
-            "Volatility": 1.5151340110905898,
-            "instrument_token": 81153,
-            "TradedValue": 5049723883.05
+            "tradingsymbol": "TITAN",
+            "LTP": 3669.5,
+            "ChangePrev%": -0.6820580832002548,
+            "Volume": 0,
+            "Volatility": 1.3405405405405382,
+            "instrument_token": 897537,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "INFY",
-            "LTP": 1455.8,
-            "ChangePrev%": -2.7196792515870394,
-            "Volume": 3215764,
-            "Volatility": 1.1639849366655255,
-            "instrument_token": 408065,
-            "TradedValue": 4708103599.48
+            "tradingsymbol": "WIPRO",
+            "LTP": 265.4,
+            "ChangePrev%": -1.161924623864146,
+            "Volume": 0,
+            "Volatility": 2.0446096654275094,
+            "instrument_token": 969473,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "BHARTIARTL",
-            "LTP": 1747.55,
-            "ChangePrev%": 0.08877434135165833,
-            "Volume": 2151023,
-            "Volatility": 1.0059846110002773,
-            "instrument_token": 2714625,
-            "TradedValue": 3769861399.5699997
+            "tradingsymbol": "SHRIRAMFIN",
+            "LTP": 700.0,
+            "ChangePrev%": -0.45506257110353315,
+            "Volume": 0,
+            "Volatility": 1.4650451603726558,
+            "instrument_token": 1102337,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "ONGC",
-            "LTP": 226.45,
-            "ChangePrev%": -6.929431589330489,
-            "Volume": 15230419,
-            "Volatility": 6.214665779847031,
-            "instrument_token": 633601,
-            "TradedValue": 3512743838.16
+            "tradingsymbol": "ICICIBANK",
+            "LTP": 1457.9,
+            "ChangePrev%": 1.306372038079368,
+            "Volume": 0,
+            "Volatility": 2.0084786990061914,
+            "instrument_token": 1270529,
+            "TradedValue": 0.0
         }
     ],
     "most_active_volume_df": [
         {
+            "tradingsymbol": "ADANIENT",
+            "LTP": 2644.8,
+            "ChangePrev%": 2.265872708993905,
+            "Volume": 0,
+            "Volatility": 3.848977856784013,
+            "instrument_token": 6401,
+            "TradedValue": 0.0
+        },
+        {
+            "tradingsymbol": "LT",
+            "LTP": 3678.9,
+            "ChangePrev%": 0.5273800415345988,
+            "Volume": 0,
+            "Volatility": 1.8117326057298797,
+            "instrument_token": 2939649,
+            "TradedValue": 0.0
+        },
+        {
             "tradingsymbol": "TATASTEEL",
-            "LTP": 144.19,
-            "ChangePrev%": -6.138523629735715,
-            "Volume": 19894542,
-            "Volatility": 5.910103525095014,
+            "LTP": 161.29,
+            "ChangePrev%": 0.4671732901457581,
+            "Volume": 0,
+            "Volatility": 1.6149068322981508,
             "instrument_token": 895745,
-            "TradedValue": 2936434399.2
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "ONGC",
-            "LTP": 226.45,
-            "ChangePrev%": -6.929431589330489,
-            "Volume": 15230419,
-            "Volatility": 6.214665779847031,
-            "instrument_token": 633601,
-            "TradedValue": 3512743838.16
+            "tradingsymbol": "TITAN",
+            "LTP": 3669.5,
+            "ChangePrev%": -0.6820580832002548,
+            "Volume": 0,
+            "Volatility": 1.3405405405405382,
+            "instrument_token": 897537,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "TATAMOTORS",
-            "LTP": 617.5,
-            "ChangePrev%": -5.5738206284884235,
-            "Volume": 10867165,
-            "Volatility": 5.22307692307693,
-            "instrument_token": 884737,
-            "TradedValue": 6805996767.849999
+            "tradingsymbol": "WIPRO",
+            "LTP": 265.4,
+            "ChangePrev%": -1.161924623864146,
+            "Volume": 0,
+            "Volatility": 2.0446096654275094,
+            "instrument_token": 969473,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "BPCL",
-            "LTP": 281.9,
-            "ChangePrev%": -1.708507670850779,
-            "Volume": 10536752,
-            "Volatility": 4.860516857778535,
-            "instrument_token": 134657,
-            "TradedValue": 3041854934.88
+            "tradingsymbol": "SHRIRAMFIN",
+            "LTP": 700.0,
+            "ChangePrev%": -0.45506257110353315,
+            "Volume": 0,
+            "Volatility": 1.4650451603726558,
+            "instrument_token": 1102337,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "HDFCBANK",
-            "LTP": 1831.6,
-            "ChangePrev%": 2.0475248628019056,
-            "Volume": 6066851,
-            "Volatility": 1.7015995587424233,
-            "instrument_token": 341249,
-            "TradedValue": 11089354268.859999
-        },
-        {
-            "tradingsymbol": "POWERGRID",
-            "LTP": 296.15,
-            "ChangePrev%": -0.9862922099632382,
-            "Volume": 5944645,
-            "Volatility": 1.5833333333333335,
-            "instrument_token": 3834113,
-            "TradedValue": 1769839709.4
-        },
-        {
-            "tradingsymbol": "BEL",
-            "LTP": 281.2,
-            "ChangePrev%": -2.191304347826091,
-            "Volume": 5343319,
-            "Volatility": 2.6994078718216645,
-            "instrument_token": 98049,
-            "TradedValue": 1518624692.99
+            "tradingsymbol": "ICICIBANK",
+            "LTP": 1457.9,
+            "ChangePrev%": 1.306372038079368,
+            "Volume": 0,
+            "Volatility": 2.0084786990061914,
+            "instrument_token": 1270529,
+            "TradedValue": 0.0
         }
     ],
     "best_df": [
         {
-            "tradingsymbol": "HDFCBANK",
-            "LTP": 1831.6,
-            "ChangePrev%": 2.0475248628019056,
-            "Volume": 6066851,
-            "Volatility": 1.7015995587424233,
-            "instrument_token": 341249,
-            "TradedValue": 11089354268.859999
+            "tradingsymbol": "ASIANPAINT",
+            "LTP": 2362.0,
+            "ChangePrev%": 3.153113809066286,
+            "Volume": 0,
+            "Volatility": 3.8282961016206785,
+            "instrument_token": 60417,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "TATACONSUM",
-            "LTP": 1088.05,
-            "ChangePrev%": 1.5919701213818818,
-            "Volume": 1451292,
-            "Volatility": 2.778168848843203,
-            "instrument_token": 878593,
-            "TradedValue": 1573911661.08
+            "tradingsymbol": "APOLLOHOSP",
+            "LTP": 7310.0,
+            "ChangePrev%": 2.9359994367387174,
+            "Volume": 0,
+            "Volatility": 2.8962131837307155,
+            "instrument_token": 40193,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "SHRIRAMFIN",
-            "LTP": 655.5,
-            "ChangePrev%": 0.20637468470534628,
-            "Volume": 1424719,
-            "Volatility": 1.1823035850495804,
-            "instrument_token": 1102337,
-            "TradedValue": 931865956.33
+            "tradingsymbol": "INDUSINDBK",
+            "LTP": 860.3,
+            "ChangePrev%": 2.894390623131196,
+            "Volume": 0,
+            "Volatility": 5.921052631578947,
+            "instrument_token": 1346049,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "BAJFINANCE",
-            "LTP": 8666.05,
-            "ChangePrev%": 0.8313359551346067,
-            "Volume": 583719,
-            "Volatility": 1.5151340110905898,
-            "instrument_token": 81153,
-            "TradedValue": 5049723883.05
+            "tradingsymbol": "ULTRACEMCO",
+            "LTP": 12240.0,
+            "ChangePrev%": 2.418207681365576,
+            "Volume": 0,
+            "Volatility": 2.7462437395659434,
+            "instrument_token": 2952193,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "HINDUNILVR",
-            "LTP": 2257.5,
-            "ChangePrev%": 0.576953064088562,
-            "Volume": 358167,
-            "Volatility": 1.7937219730941705,
-            "instrument_token": 356865,
-            "TradedValue": 804271161.84
+            "tradingsymbol": "ADANIENT",
+            "LTP": 2644.8,
+            "ChangePrev%": 2.265872708993905,
+            "Volume": 0,
+            "Volatility": 3.848977856784013,
+            "instrument_token": 6401,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "NESTLEIND",
-            "LTP": 2265.55,
-            "ChangePrev%": 0.886157682630868,
-            "Volume": 178696,
-            "Volatility": 2.2717099373321394,
-            "instrument_token": 4598529,
-            "TradedValue": 402469852.96000004
+            "tradingsymbol": "POWERGRID",
+            "LTP": 299.0,
+            "ChangePrev%": 1.8739352640545146,
+            "Volume": 0,
+            "Volatility": 2.2203389830508513,
+            "instrument_token": 3834113,
+            "TradedValue": 0.0
         },
         {
-            "tradingsymbol": "BRITANNIA",
-            "LTP": 5124.6,
-            "ChangePrev%": 1.0081896934039074,
-            "Volume": 83191,
-            "Volatility": 2.2827285460270716,
-            "instrument_token": 140033,
-            "TradedValue": 423188457.45
+            "tradingsymbol": "BEL",
+            "LTP": 416.4,
+            "ChangePrev%": 1.5362106803218616,
+            "Volume": 0,
+            "Volatility": 1.7783191230207094,
+            "instrument_token": 98049,
+            "TradedValue": 0.0
         }
     ]
 }

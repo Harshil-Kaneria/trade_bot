@@ -2,7 +2,7 @@
     "cannonshot_stocks": [
         {
             "instrument": {
-                "index": 1,
+                "index": 30,
                 "instrument_token": 900609,
                 "exchange_token": "3518",
                 "tradingsymbol": "TORNTPHARM",
@@ -29,7 +29,7 @@
         },
         {
             "instrument": {
-                "index": 5,
+                "index": 48,
                 "instrument_token": 3756033,
                 "exchange_token": "14672",
                 "tradingsymbol": "NAVINFLUOR",
@@ -56,7 +56,7 @@
         },
         {
             "instrument": {
-                "index": 6,
+                "index": 53,
                 "instrument_token": 4589313,
                 "exchange_token": "17927",
                 "tradingsymbol": "BAYERCROP",
@@ -99,7 +99,7 @@
         "downward_threshold": -0.5,
         "lookback_period": 3
     },
-    "last_updated": "2025-06-28T09:45:47.906202",
+    "last_updated": "2025-06-28T12:59:32.668436",
     "total_signals": 3,
     "cannonshot_stocks_csv": "NSE:TORNTPHARM,NSE:NAVINFLUOR,NSE:BAYERCROP"
 }

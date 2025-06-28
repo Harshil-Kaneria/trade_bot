@@ -26,8 +26,8 @@
       href="{{ url_for('static', filename='custom.css') }}"
     />
   </head>
-  <body class="bg-light">
-    <div class="bg-text">&lt;Developer.HK/&gt;</div>
+  <body class="bg-dark text-light">
+    <div class="bg-text">&lt;Dark <span class="text-danger">𐐒lack.</span>Terminal/&gt;</div>
     <div class="m-3">
       <div class="table-responsive text-center">
         <table class="table table-bordered">
@@ -170,18 +170,18 @@
       <div class="table-responsive text-center">
         <table class="table table-bordered text-sm">
           <tbody>
-            <tr class="table-dark" id="tableHeader"></tr>
+            <tr class="table-success" id="tableHeader"></tr>
             <tr id="tableRow"></tr>
           </tbody>
         </table>
       </div>
-      <div class="mb-3 d-flex align-items-center" id="search-bar">
-        <select id="stock-select" class="w-100 p-2">
+      <div class="mb-3 d-flex align-items-center text-black" id="search-bar">
+        <select id="stock-select" class="w-100 p-2 text-black">
           <option value="">Select a stock</option>
         </select>
         <button
           id="set-button"
-          class="btn btn-sm btn-dark ms-2"
+          class="btn btn-sm btn-outline-light ms-2"
           style="display: none"
         >
           Load
@@ -189,7 +189,7 @@
       </div>
       <div class="table-responsive text-center">
         <table class="table table-bordered table-hover">
-          <thead class="table-dark">
+          <thead class="table-success">
             <tr>
               <td>ID</td>
               <td>Order Id</td>
@@ -224,7 +224,7 @@
     </div>
 
     <div
-      class="modal fade"
+      class="modal fade text-dark"
       id="stockModal"
       tabindex="-1"
       role="dialog"
@@ -264,7 +264,7 @@
                   <th>LTP</th>
                   <th>Change (%)</th>
                   <th>Volume</th>
-                  <th>Value</th>
+                  <th>Value</th>  
                   <th>Volatility</th>
                   <th>Setup</th>
                 </tr>
