@@ -18,6 +18,7 @@ kite = KiteApp(enctoken=enctoken)
 
 # Cannonshot Screener Parameters
 CANNONSHOT_PARAMS = {
+    'MONEY_CONTROL':True,
     'ISSCOREFILTER':True,
     'SCORE':60,  
     "data_period_days": 30,
@@ -35,8 +36,8 @@ CANNONSHOT_PARAMS = {
     "lookback_period": 3  # Number of recent candles to check for downward movement
 }
 
-# symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
-symbols_list = list(pd.read_csv('data_test.csv')['SYMBOL'])
+# symbols_list = list(pd.read_csv('data_test.csv')['SYMBOL'])
+symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
 df = pd.DataFrame(kite.instruments("NSE"))
 df = df[df["tradingsymbol"].isin(symbols_list)].reset_index(drop=True)
 df = df[df["segment"]!="INDICES"].reset_index()
@@ -163,21 +164,23 @@ def analyze_cannonshot(instrument_token, instrument_data):
             close_above_week_high and rsi_crossed and rsi_overbought):
             
             symbol = instrument_data['name']
-            print(f"Fetching Moneycontrol link for {symbol}...")
-            time.sleep(2)
-            link = get_moneycontrol_link(symbol)
             score = None
-            if link:
-                print(f"  Got link: {link}")
-                time.sleep(2)
-                score = scrape_score_from_page(link)
-                print(f"  Score: {score}")
-            else:
-                print("No link found")
 
-            if CANNONSHOT_PARAMS['ISSCOREFILTER'] and score is not None and score < CANNONSHOT_PARAMS['SCORE']:
-                print(f"  Score below {CANNONSHOT_PARAMS['SCORE']} ({score}), filtering out...")
-                return None  # Skip this instrument
+            if(CANNONSHOT_PARAMS['MONEY_CONTROL']==True):
+                print(f"Fetching Moneycontrol link for {symbol}...")
+                time.sleep(2)
+                link = get_moneycontrol_link(symbol)
+                if link:
+                    print(f"  Got link: {link}")
+                    time.sleep(2)
+                    score = scrape_score_from_page(link)
+                    print(f"  Score: {score}")
+                else:
+                    print("No link found")
+
+                if CANNONSHOT_PARAMS['ISSCOREFILTER'] and score is not None and score < CANNONSHOT_PARAMS['SCORE']:
+                    print(f"  Score below {CANNONSHOT_PARAMS['SCORE']} ({score}), filtering out...")
+                    return None  # Skip this instrument
                     
             result = {
                 "instrument": convert_numpy_types(instrument_data.to_dict()),

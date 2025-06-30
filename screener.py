@@ -7,6 +7,9 @@ import talib
 import numpy as np
 import json
 import time
+import requests
+import urllib.parse
+from bs4 import BeautifulSoup
 
 # Load environment variables
 load_dotenv(override=True)
@@ -15,6 +18,9 @@ kite = KiteApp(enctoken=enctoken)
 
 # Global Analysis Parameters - Can be modified as needed
 ANALYSIS_PARAMS = {
+    'MONEY_CONTROL':True,
+    'ISSCOREFILTER':True,
+    'SCORE':60,
     "data_period_days": 30,
     "candle_interval": "5minute",
     "ema": {
@@ -38,10 +44,48 @@ ANALYSIS_PARAMS = {
     "api_delay": 0.5        # Delay between batches in seconds
 }
 
-symbols_list = list(pd.read_csv('data.csv')['SYMBOL'])
+symbols_list = list(pd.read_csv('data_500.csv')['SYMBOL'])
 df = pd.DataFrame(kite.instruments("NSE"))
 df = df[df["tradingsymbol"].isin(symbols_list)].reset_index(drop=True)
 df = df[df["segment"]!="INDICES"].reset_index()
+
+def get_moneycontrol_link(name: str):
+    # Clean and encode query
+    query = urllib.parse.quote(name.strip())
+    
+    # Correct API URL
+    url = f"https://www.moneycontrol.com/mccode/common/autosuggestion_solr.php?classic=true&query={query}&type=1&format=json"
+    
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            return None
+
+        data = resp.json()
+        if not data:
+            return None
+
+        # Return the first match's link
+        return data[0].get("link_src")
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+def scrape_score_from_page(url):
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        res = requests.get(url, headers=headers, timeout=10)
+        if res.status_code != 200:
+            return None
+        soup = BeautifulSoup(res.text, "html.parser")
+        score_div = soup.select_one("div.score")
+        if score_div:
+            raw_text = score_div.text.strip()
+            score = raw_text.split("/")[0]  # "71/100" -> "71"
+            return int(score)
+        return None
+    except Exception as e:
+        return None
 
 def convert_numpy_types(obj):
     """Convert numpy types to native Python types for JSON serialization"""
@@ -183,7 +227,6 @@ def analyze_instrument(instrument_token, instrument_data):
         # Prepare result with all calculated values
         result = {
             "instrument": convert_numpy_types(instrument_data.to_dict()),
-            "analysis_parameters": ANALYSIS_PARAMS,
             "strength_score": 0,
             "support_resistance": convert_numpy_types(sr_levels)
         }
@@ -205,12 +248,32 @@ def analyze_instrument(instrument_token, instrument_data):
         
         # Determine trend and calculate strength score
         if ema_cross_up and volume_condition and latest['supertrend_direction'] == 1:
+
+            symbol = instrument_data['name']
+            score = None
+            if(ANALYSIS_PARAMS['MONEY_CONTROL']==True):
+                print(f"Fetching Moneycontrol link for {symbol}...")
+                time.sleep(2)
+                link = get_moneycontrol_link(symbol)
+                if link:
+                    print(f"  Got link: {link}")
+                    time.sleep(2)
+                    score = scrape_score_from_page(link)
+                    print(f"  Score: {score}")
+                else:
+                    print("No link found")
+
+                if ANALYSIS_PARAMS['ISSCOREFILTER'] and score is not None and score < ANALYSIS_PARAMS['SCORE']:
+                    print(f"  Score below {ANALYSIS_PARAMS['SCORE']} ({score}), filtering out...")
+                    return None  # Skip this instrument
+
             # Calculate strength score for upside positions
             strength = (volume_ratio * ANALYSIS_PARAMS['strength_weights']['volume_ratio'] + 
                        (ema_distance * ANALYSIS_PARAMS['strength_weights']['ema_distance']) + 
                        (price_distance_from_ema * ANALYSIS_PARAMS['strength_weights']['price_distance']))
             result["signal"] = "up"
             result["strength_score"] = round(strength, 2)
+            result["score"] = score
             
             # Add target and stoploss suggestions for long positions
             if sr_levels['nearest_resistance']:
@@ -228,12 +291,32 @@ def analyze_instrument(instrument_token, instrument_data):
             return result
             
         elif ema_cross_down and volume_condition and latest['supertrend_direction'] == -1:
+
+            symbol = instrument_data['name']
+            score = None
+            if(ANALYSIS_PARAMS['MONEY_CONTROL']==True):
+                print(f"Fetching Moneycontrol link for {symbol}...")
+                time.sleep(2)
+                link = get_moneycontrol_link(symbol)
+                if link:
+                    print(f"  Got link: {link}")
+                    time.sleep(2)
+                    score = scrape_score_from_page(link)
+                    print(f"  Score: {score}")
+                else:
+                    print("No link found")
+
+                if ANALYSIS_PARAMS['ISSCOREFILTER'] and score is not None and score < ANALYSIS_PARAMS['SCORE']:
+                    print(f"  Score below {ANALYSIS_PARAMS['SCORE']} ({score}), filtering out...")
+                    return None  # Skip this instrument
+
             # Calculate strength score for downside positions
             strength = (volume_ratio * ANALYSIS_PARAMS['strength_weights']['volume_ratio'] + 
                        (abs(ema_distance) * ANALYSIS_PARAMS['strength_weights']['ema_distance']) + 
                        (abs(price_distance_from_ema) * ANALYSIS_PARAMS['strength_weights']['price_distance']))
             result["signal"] = "down"
             result["strength_score"] = round(strength, 2)
+            result["score"] = score
             
             # Add target and stoploss suggestions for short positions
             if sr_levels['nearest_support']:
@@ -283,8 +366,10 @@ def run_screener():
                 time.sleep(ANALYSIS_PARAMS['api_delay'])
         
         # Sort by strength score (descending)
-        upSidePosition.sort(key=lambda x: x['strength_score'], reverse=True)
-        shortSidePosition.sort(key=lambda x: x['strength_score'], reverse=True)
+        # upSidePosition.sort(key=lambda x: x['strength_score'], reverse=True)
+        # shortSidePosition.sort(key=lambda x: x['strength_score'], reverse=True)
+        upSidePosition.sort(key=lambda x: (x.get('score') is None, -(x.get('score') or 0)))
+        shortSidePosition.sort(key=lambda x: (x.get('score') is None, -(x.get('score') or 0)))
         
         # Prepare response with all calculated values
         response = {

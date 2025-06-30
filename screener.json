@@ -1,13 +1,12 @@
 {
-    "upSidePosition": [],
-    "shortSidePosition": [
+    "upSidePosition": [
         {
             "instrument": {
-                "index": 50,
-                "instrument_token": 5582849,
-                "exchange_token": "21808",
-                "tradingsymbol": "SBILIFE",
-                "name": "SBI LIFE INSURANCE CO",
+                "index": 176,
+                "instrument_token": 1152769,
+                "exchange_token": "4503",
+                "tradingsymbol": "MPHASIS",
+                "name": "MPHASIS",
                 "last_price": 0.0,
                 "expiry": null,
                 "strike": 0.0,
@@ -17,21 +16,24 @@
                 "segment": "NSE",
                 "exchange": "NSE",
                 "indicators": {
-                    "current_price": 1843.0,
-                    "ema_short_period": 1850.7326448626886,
-                    "ema_long_period": 1851.5870113543488,
-                    "supertrend_value": 1867.3236825480776,
-                    "supertrend_direction": "down",
-                    "atr": 6.757894182692527,
-                    "volume": 449823,
-                    "volume_sma": 270466.05,
-                    "volume_ratio": 1.66,
-                    "price_distance_from_ema": -0.42,
-                    "ema_distance": -0.05,
-                    "date": "2025-06-27"
+                    "current_price": 2850.1,
+                    "ema_short_period": 2847.3667353483816,
+                    "ema_long_period": 2847.314921279614,
+                    "supertrend_value": 2833.8403085278956,
+                    "supertrend_direction": "up",
+                    "atr": 7.053230490701535,
+                    "volume": 13766,
+                    "volume_sma": 6168.05,
+                    "volume_ratio": 2.23,
+                    "price_distance_from_ema": 0.1,
+                    "ema_distance": 0.0,
+                    "date": "2025-06-30"
                 }
             },
             "analysis_parameters": {
+                "MONEY_CONTROL": true,
+                "ISSCOREFILTER": true,
+                "SCORE": 60,
                 "data_period_days": 30,
                 "candle_interval": "5minute",
                 "ema": {
@@ -54,36 +56,777 @@
                 "batch_size": 5,
                 "api_delay": 0.5
             },
-            "strength_score": 0.68,
+            "strength_score": 0.71,
             "support_resistance": {
                 "support_levels": [
-                    1847.6,
-                    1845.2,
-                    1842.9
+                    2840.9,
+                    2840.7,
+                    2839.3
                 ],
                 "resistance_levels": [
-                    1855.1,
-                    1857.3,
-                    1862.9
+                    2853.8,
+                    2853.9,
+                    2859.4
                 ],
-                "nearest_support": 1842.9,
-                "nearest_resistance": 1855.1,
+                "nearest_support": 2840.9,
+                "nearest_resistance": 2853.8,
                 "method": "Pivot points from last 30 candles"
             },
-            "signal": "down",
+            "signal": "up",
+            "score": 73,
             "target_suggestion": {
-                "conservative": 1842.9,
-                "moderate": 1829.48,
-                "aggressive": 1822.73
+                "conservative": 2853.8,
+                "moderate": 2864.21,
+                "aggressive": 2871.26
             },
             "stoploss_suggestion": {
-                "conservative": 1855.1,
-                "moderate": 1849.76,
-                "aggressive": 1846.38
+                "conservative": 2840.9,
+                "moderate": 2843.05,
+                "aggressive": 2846.57
+            }
+        },
+        {
+            "instrument": {
+                "index": 429,
+                "instrument_token": 5186817,
+                "exchange_token": "20261",
+                "tradingsymbol": "IREDA",
+                "name": "INDIAN RENEWABLE ENERGY",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.01,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 170.2,
+                    "ema_short_period": 170.16524215168803,
+                    "ema_long_period": 170.16418933385054,
+                    "supertrend_value": 169.42913970805176,
+                    "supertrend_direction": "up",
+                    "atr": 0.2569534306494065,
+                    "volume": 219388,
+                    "volume_sma": 103060.4,
+                    "volume_ratio": 2.13,
+                    "price_distance_from_ema": 0.02,
+                    "ema_distance": 0.0,
+                    "date": "2025-06-30"
+                }
+            },
+            "analysis_parameters": {
+                "MONEY_CONTROL": true,
+                "ISSCOREFILTER": true,
+                "SCORE": 60,
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21,
+                "batch_size": 5,
+                "api_delay": 0.5
+            },
+            "strength_score": 0.65,
+            "support_resistance": {
+                "support_levels": [
+                    169.85,
+                    169.85,
+                    169.8
+                ],
+                "resistance_levels": [
+                    170.44,
+                    170.45,
+                    170.53
+                ],
+                "nearest_support": 169.85,
+                "nearest_resistance": 170.44,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "up",
+            "score": 69,
+            "target_suggestion": {
+                "conservative": 170.44,
+                "moderate": 170.71,
+                "aggressive": 170.97
+            },
+            "stoploss_suggestion": {
+                "conservative": 169.85,
+                "moderate": 169.94,
+                "aggressive": 170.07
+            }
+        },
+        {
+            "instrument": {
+                "index": 65,
+                "instrument_token": 265729,
+                "exchange_token": "1038",
+                "tradingsymbol": "FINCABLES",
+                "name": "FINOLEX CABLES",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.05,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 986.05,
+                    "ema_short_period": 981.4641110111047,
+                    "ema_long_period": 980.8567628937559,
+                    "supertrend_value": 975.6556659389911,
+                    "supertrend_direction": "up",
+                    "atr": 3.1564446870029554,
+                    "volume": 19573,
+                    "volume_sma": 5806.0,
+                    "volume_ratio": 3.37,
+                    "price_distance_from_ema": 0.47,
+                    "ema_distance": 0.06,
+                    "date": "2025-06-30"
+                }
+            },
+            "analysis_parameters": {
+                "MONEY_CONTROL": true,
+                "ISSCOREFILTER": true,
+                "SCORE": 60,
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21,
+                "batch_size": 5,
+                "api_delay": 0.5
+            },
+            "strength_score": 1.22,
+            "support_resistance": {
+                "support_levels": [
+                    977.5,
+                    976.3,
+                    975.95
+                ],
+                "resistance_levels": [
+                    982.05,
+                    982.9,
+                    984.0
+                ],
+                "nearest_support": 977.5,
+                "nearest_resistance": null,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "up",
+            "score": 64
+        },
+        {
+            "instrument": {
+                "index": 174,
+                "instrument_token": 1131777,
+                "exchange_token": "4421",
+                "tradingsymbol": "CREDITACC",
+                "name": "CREDITACCESS GRAMEEN",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.1,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 1211.8,
+                    "ema_short_period": 1209.7194412719657,
+                    "ema_long_period": 1209.6124507571415,
+                    "supertrend_value": 1199.3054521147926,
+                    "supertrend_direction": "up",
+                    "atr": 3.531515961735799,
+                    "volume": 3205,
+                    "volume_sma": 2817.35,
+                    "volume_ratio": 1.14,
+                    "price_distance_from_ema": 0.17,
+                    "ema_distance": 0.01,
+                    "date": "2025-06-30"
+                }
+            },
+            "analysis_parameters": {
+                "MONEY_CONTROL": true,
+                "ISSCOREFILTER": true,
+                "SCORE": 60,
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21,
+                "batch_size": 5,
+                "api_delay": 0.5
+            },
+            "strength_score": 0.41,
+            "support_resistance": {
+                "support_levels": [
+                    1205.8,
+                    1205.5,
+                    1205.0
+                ],
+                "resistance_levels": [
+                    1214.0,
+                    1214.0,
+                    1214.2
+                ],
+                "nearest_support": 1205.8,
+                "nearest_resistance": 1214.0,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "up",
+            "score": null,
+            "target_suggestion": {
+                "conservative": 1214.0,
+                "moderate": 1218.86,
+                "aggressive": 1222.39
+            },
+            "stoploss_suggestion": {
+                "conservative": 1205.8,
+                "moderate": 1208.27,
+                "aggressive": 1210.03
+            }
+        },
+        {
+            "instrument": {
+                "index": 211,
+                "instrument_token": 1716481,
+                "exchange_token": "6705",
+                "tradingsymbol": "PAYTM",
+                "name": "ONE 97 COMMUNICATIONS",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.05,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 926.0,
+                    "ema_short_period": 924.4282020135626,
+                    "ema_long_period": 924.2369305560057,
+                    "supertrend_value": 919.7902958248758,
+                    "supertrend_direction": "up",
+                    "atr": 1.8865680583747568,
+                    "volume": 104567,
+                    "volume_sma": 70320.55,
+                    "volume_ratio": 1.49,
+                    "price_distance_from_ema": 0.17,
+                    "ema_distance": 0.02,
+                    "date": "2025-06-30"
+                }
+            },
+            "analysis_parameters": {
+                "MONEY_CONTROL": true,
+                "ISSCOREFILTER": true,
+                "SCORE": 60,
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21,
+                "batch_size": 5,
+                "api_delay": 0.5
+            },
+            "strength_score": 0.52,
+            "support_resistance": {
+                "support_levels": [
+                    922.55,
+                    922.2,
+                    921.75
+                ],
+                "resistance_levels": [
+                    925.25,
+                    926.0,
+                    928.45
+                ],
+                "nearest_support": 922.55,
+                "nearest_resistance": 928.45,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "up",
+            "score": null,
+            "target_suggestion": {
+                "conservative": 928.45,
+                "moderate": 929.77,
+                "aggressive": 931.66
+            },
+            "stoploss_suggestion": {
+                "conservative": 922.55,
+                "moderate": 924.11,
+                "aggressive": 925.06
+            }
+        },
+        {
+            "instrument": {
+                "index": 286,
+                "instrument_token": 2964481,
+                "exchange_token": "11580",
+                "tradingsymbol": "WESTLIFE",
+                "name": "WESTLIFE FOODWORLD",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.05,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 750.0,
+                    "ema_short_period": 747.1988087431281,
+                    "ema_long_period": 747.1376208719838,
+                    "supertrend_value": 740.7730183413423,
+                    "supertrend_direction": "up",
+                    "atr": 2.0423272195525346,
+                    "volume": 3764,
+                    "volume_sma": 1316.3,
+                    "volume_ratio": 2.86,
+                    "price_distance_from_ema": 0.37,
+                    "ema_distance": 0.01,
+                    "date": "2025-06-30"
+                }
+            },
+            "analysis_parameters": {
+                "MONEY_CONTROL": true,
+                "ISSCOREFILTER": true,
+                "SCORE": 60,
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21,
+                "batch_size": 5,
+                "api_delay": 0.5
+            },
+            "strength_score": 1.01,
+            "support_resistance": {
+                "support_levels": [
+                    744.65,
+                    744.05,
+                    743.1
+                ],
+                "resistance_levels": [
+                    748.85,
+                    750.65,
+                    750.7
+                ],
+                "nearest_support": 744.65,
+                "nearest_resistance": 750.65,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "up",
+            "score": null,
+            "target_suggestion": {
+                "conservative": 750.65,
+                "moderate": 754.08,
+                "aggressive": 756.13
+            },
+            "stoploss_suggestion": {
+                "conservative": 744.65,
+                "moderate": 747.96,
+                "aggressive": 748.98
             }
         }
     ],
+    "shortSidePosition": [
+        {
+            "instrument": {
+                "index": 100,
+                "instrument_token": 464385,
+                "exchange_token": "1814",
+                "tradingsymbol": "KPIL",
+                "name": "KALPATARU PROJECT INT",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.1,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 1214.3,
+                    "ema_short_period": 1225.8670442083328,
+                    "ema_long_period": 1225.8862015900522,
+                    "supertrend_value": 1233.1121812869321,
+                    "supertrend_direction": "down",
+                    "atr": 5.854060428977403,
+                    "volume": 10071,
+                    "volume_sma": 6406.0,
+                    "volume_ratio": 1.57,
+                    "price_distance_from_ema": -0.94,
+                    "ema_distance": -0.0,
+                    "date": "2025-06-30"
+                }
+            },
+            "analysis_parameters": {
+                "MONEY_CONTROL": true,
+                "ISSCOREFILTER": true,
+                "SCORE": 60,
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21,
+                "batch_size": 5,
+                "api_delay": 0.5
+            },
+            "strength_score": 0.85,
+            "support_resistance": {
+                "support_levels": [
+                    1220.0,
+                    1219.9,
+                    1215.1
+                ],
+                "resistance_levels": [
+                    1222.1,
+                    1222.6,
+                    1242.0
+                ],
+                "nearest_support": null,
+                "nearest_resistance": 1222.1,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "down",
+            "score": 77
+        },
+        {
+            "instrument": {
+                "index": 107,
+                "instrument_token": 519937,
+                "exchange_token": "2031",
+                "tradingsymbol": "M&M",
+                "name": "MAHINDRA & MAHINDRA",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.1,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 3175.5,
+                    "ema_short_period": 3180.8951881054954,
+                    "ema_long_period": 3181.3964578207556,
+                    "supertrend_value": 3189.3100457302717,
+                    "supertrend_direction": "down",
+                    "atr": 3.720015243423839,
+                    "volume": 61779,
+                    "volume_sma": 37675.0,
+                    "volume_ratio": 1.64,
+                    "price_distance_from_ema": -0.17,
+                    "ema_distance": -0.02,
+                    "date": "2025-06-30"
+                }
+            },
+            "analysis_parameters": {
+                "MONEY_CONTROL": true,
+                "ISSCOREFILTER": true,
+                "SCORE": 60,
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21,
+                "batch_size": 5,
+                "api_delay": 0.5
+            },
+            "strength_score": 0.56,
+            "support_resistance": {
+                "support_levels": [
+                    3180.0,
+                    3179.8,
+                    3175.0
+                ],
+                "resistance_levels": [
+                    3187.0,
+                    3187.0,
+                    3187.3
+                ],
+                "nearest_support": 3175.0,
+                "nearest_resistance": 3187.0,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "down",
+            "score": 75,
+            "target_suggestion": {
+                "conservative": 3175.0,
+                "moderate": 3168.06,
+                "aggressive": 3164.34
+            },
+            "stoploss_suggestion": {
+                "conservative": 3187.0,
+                "moderate": 3179.22,
+                "aggressive": 3177.36
+            }
+        },
+        {
+            "instrument": {
+                "index": 99,
+                "instrument_token": 462849,
+                "exchange_token": "1808",
+                "tradingsymbol": "KAJARIACER",
+                "name": "KAJARIA CERAMICS",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.1,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 1078.5,
+                    "ema_short_period": 1079.965956717689,
+                    "ema_long_period": 1079.9988170133818,
+                    "supertrend_value": 1086.5934296539983,
+                    "supertrend_direction": "down",
+                    "atr": 2.2811432179994706,
+                    "volume": 4770,
+                    "volume_sma": 3190.85,
+                    "volume_ratio": 1.49,
+                    "price_distance_from_ema": -0.14,
+                    "ema_distance": -0.0,
+                    "date": "2025-06-30"
+                }
+            },
+            "analysis_parameters": {
+                "MONEY_CONTROL": true,
+                "ISSCOREFILTER": true,
+                "SCORE": 60,
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21,
+                "batch_size": 5,
+                "api_delay": 0.5
+            },
+            "strength_score": 0.5,
+            "support_resistance": {
+                "support_levels": [
+                    1078.5,
+                    1078.5,
+                    1078.2
+                ],
+                "resistance_levels": [
+                    1082.0,
+                    1082.0,
+                    1082.3
+                ],
+                "nearest_support": 1078.2,
+                "nearest_resistance": 1082.0,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "down",
+            "score": null,
+            "target_suggestion": {
+                "conservative": 1078.2,
+                "moderate": 1073.94,
+                "aggressive": 1071.66
+            },
+            "stoploss_suggestion": {
+                "conservative": 1082.0,
+                "moderate": 1080.78,
+                "aggressive": 1079.64
+            }
+        },
+        {
+            "instrument": {
+                "index": 267,
+                "instrument_token": 2865921,
+                "exchange_token": "11195",
+                "tradingsymbol": "INDIGO",
+                "name": "INTERGLOBE AVIATION",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.5,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE",
+                "indicators": {
+                    "current_price": 5950.0,
+                    "ema_short_period": 5972.226282429534,
+                    "ema_long_period": 5974.318174122259,
+                    "supertrend_value": 5988.502088750811,
+                    "supertrend_direction": "down",
+                    "atr": 9.584029583603709,
+                    "volume": 33406,
+                    "volume_sma": 26265.7,
+                    "volume_ratio": 1.27,
+                    "price_distance_from_ema": -0.37,
+                    "ema_distance": -0.04,
+                    "date": "2025-06-30"
+                }
+            },
+            "analysis_parameters": {
+                "MONEY_CONTROL": true,
+                "ISSCOREFILTER": true,
+                "SCORE": 60,
+                "data_period_days": 30,
+                "candle_interval": "5minute",
+                "ema": {
+                    "short_period": 9,
+                    "long_period": 21
+                },
+                "supertrend": {
+                    "period": 10,
+                    "multiplier": 3
+                },
+                "volume": {
+                    "sma_period": 20
+                },
+                "strength_weights": {
+                    "volume_ratio": 0.3,
+                    "ema_distance": 0.3,
+                    "price_distance": 0.4
+                },
+                "min_data_points": 21,
+                "batch_size": 5,
+                "api_delay": 0.5
+            },
+            "strength_score": 0.54,
+            "support_resistance": {
+                "support_levels": [
+                    5962.5,
+                    5959.0,
+                    5955.0
+                ],
+                "resistance_levels": [
+                    5979.5,
+                    5980.0,
+                    5989.5
+                ],
+                "nearest_support": null,
+                "nearest_resistance": 5979.5,
+                "method": "Pivot points from last 30 candles"
+            },
+            "signal": "down",
+            "score": null
+        }
+    ],
     "analysis_parameters": {
+        "MONEY_CONTROL": true,
+        "ISSCOREFILTER": true,
+        "SCORE": 60,
         "data_period_days": 30,
         "candle_interval": "5minute",
         "ema": {
@@ -106,9 +849,9 @@
         "batch_size": 5,
         "api_delay": 0.5
     },
-    "last_updated": "2025-06-28T12:50:45.133191",
-    "total_up_signals": 0,
-    "total_down_signals": 1,
-    "upSidePositionCsv": "",
-    "shortSidePositionCsv": "NSE:SBILIFE"
+    "last_updated": "2025-06-30T22:26:13.464088",
+    "total_up_signals": 6,
+    "total_down_signals": 4,
+    "upSidePositionCsv": "NSE:MPHASIS,NSE:IREDA,NSE:FINCABLES,NSE:CREDITACC,NSE:PAYTM,NSE:WESTLIFE",
+    "shortSidePositionCsv": "NSE:KPIL,NSE:M&M,NSE:KAJARIACER,NSE:INDIGO"
 }
