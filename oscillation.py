@@ -1,9 +1,12 @@
 import os
+from dotenv import load_dotenv
 import time
 import numpy as np
 from datetime import datetime
 from kite_trade import *
 from kiteconnect import KiteTicker
+
+load_dotenv(override=True)
 
 # Initialize Kite API
 enctoken = os.getenv("ENCTOKEN")
@@ -197,38 +200,86 @@ def manage_orders():
     except Exception as e:
         print(f"⚠️ Error checking order: {e}")
 
+user_id = kite.profile()["user_id"]
 # Main trading loop
 def run_bot():
     global active_order, trades_completed, price_history
     
     symbols = get_nifty500_symbols()
-    print("🚀 Starting Oscillation HFT Scalping Bot")
-    print(f"💰 Capital: ₹1,00,000 | Target: ₹180/trade | Max Trade Time: 5 mins")
+    print(f"Loaded {len(symbols)} symbols from Nifty 500")
     
-    # Initialize price history
-    for symbol in symbols[:100]:  # Monitor first 100 symbols
-        ltp = kite.ltp(f"NSE:{symbol}")[f"NSE:{symbol}"]["last_price"]
-        price_history[symbol] = [ltp] * 20  # Initialize with current price
+    # Initialize KiteTicker for streaming data
+    kws = KiteTicker(api_key="your_api_key", access_token=enctoken + "&user_id=" + user_id)
     
+    # Initialize price history for first 50 symbols
+    initialized = 0
+    instrument_tokens = []
+    
+    for symbol in symbols[:50]:  # Reduce initial monitoring set
+        try:
+            # Get instrument token for each symbol
+            instruments = kite.instruments("NSE")
+            instrument = next((i for i in instruments if i['tradingsymbol'] == symbol), None)
+            
+            if instrument:
+                instrument_token = instrument['instrument_token']
+                instrument_tokens.append(instrument_token)
+                
+                # Get initial LTP using quote API
+                quote = kite.quote(f"NSE:{symbol}")
+                ltp = quote[f"NSE:{symbol}"]["last_price"]
+                price_history[symbol] = [ltp] * OSCILLATION_PERIOD
+                initialized += 1
+                print(f"Initialized {symbol} @ ₹{ltp}")
+        except Exception as e:
+            print(f"Failed to initialize {symbol}: {str(e)}")
+            continue
+    
+    print(f"🚀 Bot Started | Tracking {initialized} symbols | Capital: ₹1,00,000")
+    
+    # WebSocket callbacks
+    def on_ticks(ws, ticks):
+        for tick in ticks:
+            symbol = next((s for s in price_history.keys() 
+                         if kite.instruments("NSE", s)[0]['instrument_token'] == tick['instrument_token']), None)
+            if symbol:
+                price_history[symbol].append(tick['last_price'])
+                price_history[symbol] = price_history[symbol][-OSCILLATION_PERIOD:]
+    
+    def on_connect(ws, response):
+        ws.subscribe(instrument_tokens)
+        ws.set_mode(ws.MODE_LTP, instrument_tokens)
+    
+    kws.on_ticks = on_ticks
+    kws.on_connect = on_connect
+    kws.connect(threaded=True)
+    
+    iteration = 0
     while True:
-        # Update price history for all monitored symbols
-        for symbol in list(price_history.keys()):
-            try:
-                ltp = kite.ltp(f"NSE:{symbol}")[f"NSE:{symbol}"]["last_price"]
-                price_history[symbol].append(ltp)
-                price_history[symbol] = price_history[symbol][-20:]  # Keep last 20 prices
-            except:
-                pass
+        iteration += 1
+        print(f"\n=== Iteration {iteration} ===")
         
-        # Look for trading opportunity if no active order
+        # Trading logic
         if active_order is None:
+            print("Checking for trading opportunities...")
             for symbol, prices in price_history.items():
-                if is_oscillating(prices) and find_entry_point(prices):
-                    if place_scalp_order(symbol):
-                        break  # Only one trade at a time
+                try:
+                    if len(prices) >= OSCILLATION_PERIOD and is_oscillating(prices) and find_entry_point(prices):
+                        print(f"Found opportunity in {symbol}")
+                        if place_scalp_order(symbol):
+                            break
+                except Exception as e:
+                    print(f"Error evaluating {symbol}: {str(e)}")
+                    continue
         
-        manage_orders()  # Check and manage orders
-        time.sleep(5)  # Check every 5 seconds
+        # Order management
+        manage_orders()
+        
+        # Status update
+        print(f"Active orders: {1 if active_order else 0}")
+        print(f"Total trades: {trades_completed} | Profit: ₹{total_profit}")
+        
+        time.sleep(5)  # 5 second delay between iterations
 
 if __name__ == "__main__":
     run_bot()
