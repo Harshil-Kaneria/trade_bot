@@ -50,7 +50,7 @@ while not kws.is_connected():
     time.sleep(0.5)
 
 # Start chunk loop
-chunk_size = 50
+chunk_size = 100
 total_records = len(df)
 num_chunks = (total_records + chunk_size - 1) // chunk_size
 
