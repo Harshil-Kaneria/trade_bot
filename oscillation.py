@@ -10,6 +10,7 @@ load_dotenv(override=True)
 
 # Initialize Kite API
 enctoken = os.getenv("ENCTOKEN")
+api_key = os.getenv("API_KEY")  # Add your API key to .env
 kite = KiteApp(enctoken=enctoken)
 
 # Configuration
@@ -17,12 +18,14 @@ CAPITAL = 100000  # ₹1,00,000 capital
 TARGET_PROFIT = 180  # ₹180 profit per trade
 MAX_ORDER_TIME = 300  # 5 minutes (exit trade no matter what)
 RISK_PER_TRADE = 0.01  # 1% risk per trade (~₹1000)
+OSCILLATION_PERIOD = 20  # Number of prices to track for oscillation detection
 
 # Trackers
 active_order = None
 trades_completed = 0
 total_profit = 0
-price_history = {}  # Stores last 20 prices for each symbol
+price_history = {}  # Stores {'symbol': {'prices': [], 'instrument_token': x}}
+instrument_tokens = []  # List of instrument tokens we're tracking
 
 # Get liquid Nifty 500 stocks
 def get_nifty500_symbols():
@@ -77,18 +80,17 @@ def find_entry_point(prices):
 # Place BUY and SELL orders (LIMIT)
 def place_scalp_order(symbol):
     global active_order
-    
-    ltp = kite.ltp(f"NSE:{symbol}")[f"NSE:{symbol}"]["last_price"]
+
+    ltp = price_history[symbol]['prices'][-1]
     quantity = calculate_quantity(ltp)
-    
+
     # Buy at 0.2% below current (better fill)
     buy_price = round(ltp * 0.998, 2)
     sell_price = round(buy_price + (TARGET_PROFIT / quantity), 2)
-    
+
     print(f"📈 Placing Order: {symbol} | Buy {quantity} @ ₹{buy_price} | Sell @ ₹{sell_price}")
-    
+
     try:
-        # Place BUY order (LIMIT)
         buy_order = kite.place_order(
             variety="regular",
             exchange="NSE",
@@ -101,8 +103,7 @@ def place_scalp_order(symbol):
             validity="DAY",
             tag="OSC180"
         )
-        
-        # Place SELL order (LIMIT)
+
         sell_order = kite.place_order(
             variety="regular",
             exchange="NSE",
@@ -115,18 +116,18 @@ def place_scalp_order(symbol):
             validity="DAY",
             tag="OSC180"
         )
-        
+
         active_order = {
             "symbol": symbol,
-            "buy_order_id": buy_order["order_id"],
-            "sell_order_id": sell_order["order_id"],
+            "buy_order_id": buy_order,
+            "sell_order_id": sell_order,
             "quantity": quantity,
             "buy_price": buy_price,
             "sell_price": sell_price,
             "order_time": datetime.now()
         }
         return True
-    
+
     except Exception as e:
         print(f"❌ Order Failed: {e}")
         return False
@@ -186,7 +187,7 @@ def manage_orders():
         
         elif buy_status == "COMPLETE" and sell_status != "COMPLETE":
             # Modify SELL order if price moves favorably
-            current_ltp = kite.ltp(f"NSE:{active_order['symbol']}")[f"NSE:{active_order['symbol']}"]["last_price"]
+            current_ltp = price_history[active_order["symbol"]]['prices'][-1]
             if current_ltp > active_order["sell_price"] * 1.02:
                 try:
                     kite.modify_order(
@@ -200,35 +201,59 @@ def manage_orders():
     except Exception as e:
         print(f"⚠️ Error checking order: {e}")
 
-user_id = kite.profile()["user_id"]
+# WebSocket callbacks
+def on_ticks(ws, ticks):
+    for tick in ticks:
+        # Find the symbol for this instrument token
+        symbol = None
+        for s, data in price_history.items():
+            if data['instrument_token'] == tick['instrument_token']:
+                symbol = s
+                break
+                
+        if symbol:
+            # Update price history
+            price_history[symbol]['prices'].append(tick['last_price'])
+            # Keep only the last OSCILLATION_PERIOD prices
+            price_history[symbol]['prices'] = price_history[symbol]['prices'][-OSCILLATION_PERIOD:]
+
+def on_connect(ws, response):
+    ws.subscribe(instrument_tokens)
+    ws.set_mode(ws.MODE_LTP, instrument_tokens)
+
+def on_error(ws, code, reason):
+    print(f"WebSocket Error: {code} - {reason}")
+    # Implement reconnection logic here if needed
+
+def on_close(ws, code, reason):
+    print(f"WebSocket Closed: {code} - {reason}")
+    # Implement reconnection logic here if needed
+
 # Main trading loop
 def run_bot():
-    global active_order, trades_completed, price_history
+    global active_order, trades_completed, price_history, instrument_tokens
     
     symbols = get_nifty500_symbols()
     print(f"Loaded {len(symbols)} symbols from Nifty 500")
     
-    # Initialize KiteTicker for streaming data
-    kws = KiteTicker(api_key="your_api_key", access_token=enctoken + "&user_id=" + user_id)
-    
     # Initialize price history for first 50 symbols
     initialized = 0
-    instrument_tokens = []
+    instruments = kite.instruments("NSE")
     
     for symbol in symbols[:50]:  # Reduce initial monitoring set
         try:
-            # Get instrument token for each symbol
-            instruments = kite.instruments("NSE")
             instrument = next((i for i in instruments if i['tradingsymbol'] == symbol), None)
             
             if instrument:
                 instrument_token = instrument['instrument_token']
                 instrument_tokens.append(instrument_token)
                 
-                # Get initial LTP using quote API
-                quote = kite.quote(f"NSE:{symbol}")
-                ltp = quote[f"NSE:{symbol}"]["last_price"]
-                price_history[symbol] = [ltp] * OSCILLATION_PERIOD
+                # Get initial LTP
+                ltp = instrument['last_price']
+                price_history[symbol] = {
+                    'prices': [ltp] * OSCILLATION_PERIOD,
+                    'instrument_token': instrument_token
+                }
                 initialized += 1
                 print(f"Initialized {symbol} @ ₹{ltp}")
         except Exception as e:
@@ -237,21 +262,16 @@ def run_bot():
     
     print(f"🚀 Bot Started | Tracking {initialized} symbols | Capital: ₹1,00,000")
     
-    # WebSocket callbacks
-    def on_ticks(ws, ticks):
-        for tick in ticks:
-            symbol = next((s for s in price_history.keys() 
-                         if kite.instruments("NSE", s)[0]['instrument_token'] == tick['instrument_token']), None)
-            if symbol:
-                price_history[symbol].append(tick['last_price'])
-                price_history[symbol] = price_history[symbol][-OSCILLATION_PERIOD:]
+    # Initialize KiteTicker
+    kws = KiteTicker(api_key=api_key, access_token=enctoken)
     
-    def on_connect(ws, response):
-        ws.subscribe(instrument_tokens)
-        ws.set_mode(ws.MODE_LTP, instrument_tokens)
-    
+    # Assign callbacks
     kws.on_ticks = on_ticks
     kws.on_connect = on_connect
+    kws.on_error = on_error
+    kws.on_close = on_close
+    
+    # Start WebSocket in a thread
     kws.connect(threaded=True)
     
     iteration = 0
@@ -262,8 +282,9 @@ def run_bot():
         # Trading logic
         if active_order is None:
             print("Checking for trading opportunities...")
-            for symbol, prices in price_history.items():
+            for symbol, data in price_history.items():
                 try:
+                    prices = data['prices']
                     if len(prices) >= OSCILLATION_PERIOD and is_oscillating(prices) and find_entry_point(prices):
                         print(f"Found opportunity in {symbol}")
                         if place_scalp_order(symbol):
