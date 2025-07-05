@@ -2,9 +2,14 @@ import os
 from dotenv import load_dotenv
 import time
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from kite_trade import *
 from kiteconnect import KiteTicker
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv(override=True)
 
@@ -14,35 +19,40 @@ api_key = os.getenv("API_KEY")  # Add your API key to .env
 kite = KiteApp(enctoken=enctoken)
 
 # Configuration
-CAPITAL = 100000  # ₹1,00,000 capital
-TARGET_PROFIT = 180  # ₹180 profit per trade
-MAX_ORDER_TIME = 300  # 5 minutes (exit trade no matter what)
-RISK_PER_TRADE = 0.01  # 1% risk per trade (~₹1000)
-OSCILLATION_PERIOD = 20  # Number of prices to track for oscillation detection
+CAPITAL = 100000
+TARGET_PROFIT = 180
+MAX_ORDER_TIME = 300
+RISK_PER_TRADE = 0.01
+OSCILLATION_PERIOD = 20
+WS_SUBSCRIBE_TIME = 30
+MAX_CONCURRENT_SUBS = 5
+RECONNECT_DELAY = 5  # seconds between reconnect attempts
 
 # Trackers
 active_order = None
 trades_completed = 0
 total_profit = 0
-price_history = {}  # Stores {'symbol': {'prices': [], 'instrument_token': x}}
-instrument_tokens = []  # List of instrument tokens we're tracking
+price_history = {}
+current_subscriptions = []
+kws = None
+all_instruments = []
+symbol_queue = []
+ws_connected = False
 
-# Get liquid Nifty 500 stocks
 def get_nifty500_symbols():
-    instruments = kite.instruments("NSE")
-    return [inst['tradingsymbol'] for inst in instruments if inst['tradingsymbol'].endswith('EQ')][:500]
+    global all_instruments
+    if not all_instruments:
+        all_instruments = kite.instruments("NSE")
+    return [inst['tradingsymbol'] for inst in all_instruments if inst['tradingsymbol'].endswith('EQ')][:500]
 
-# Calculate quantity (uses full capital)
 def calculate_quantity(price):
-    quantity = int(CAPITAL / price)  # Uses full ₹1,00,000
-    return max(1, quantity)  # At least 1 share
+    quantity = int(CAPITAL / price)
+    return max(1, quantity)
 
-# Detect oscillation pattern (100→105→100→102→100→103)
 def is_oscillating(prices):
     if len(prices) < 10:
         return False
     
-    # Calculate peaks and troughs
     peaks = []
     troughs = []
     
@@ -52,43 +62,34 @@ def is_oscillating(prices):
         elif prices[i] < prices[i-1] and prices[i] < prices[i+1]:
             troughs.append(prices[i])
     
-    # Need at least 3 peaks and 3 troughs
     if len(peaks) < 3 or len(troughs) < 3:
         return False
     
-    # Check if peaks are increasing and troughs are stable
     avg_trough = np.mean(troughs)
     trough_range = max(troughs) - min(troughs)
     
-    # Good oscillation if:
-    # 1) Troughs stay within 1.5% range
-    # 2) Peaks are generally rising
     return (trough_range/avg_trough < 0.015 and 
             np.all(np.diff(peaks) > 0))
 
-# Find best entry point in oscillation
 def find_entry_point(prices):
     if len(prices) < 10:
         return False
     
     current_price = prices[-1]
-    last_trough = min(prices[-5:-1])  # Last 4 prices
+    last_trough = min(prices[-5:-1])
     
-    # Buy when price drops near recent trough
-    return current_price <= last_trough * 1.005  # Within 0.5% of trough
+    return current_price <= last_trough * 1.005
 
-# Place BUY and SELL orders (LIMIT)
 def place_scalp_order(symbol):
     global active_order
 
     ltp = price_history[symbol]['prices'][-1]
     quantity = calculate_quantity(ltp)
 
-    # Buy at 0.2% below current (better fill)
     buy_price = round(ltp * 0.998, 2)
     sell_price = round(buy_price + (TARGET_PROFIT / quantity), 2)
 
-    print(f"📈 Placing Order: {symbol} | Buy {quantity} @ ₹{buy_price} | Sell @ ₹{sell_price}")
+    logger.info(f"📈 Placing Order: {symbol} | Buy {quantity} @ ₹{buy_price} | Sell @ ₹{sell_price}")
 
     try:
         buy_order = kite.place_order(
@@ -129,10 +130,9 @@ def place_scalp_order(symbol):
         return True
 
     except Exception as e:
-        print(f"❌ Order Failed: {e}")
+        logger.error(f"❌ Order Failed: {e}")
         return False
 
-# Manage active orders (force exit after 5 mins)
 def manage_orders():
     global active_order, trades_completed, total_profit
     
@@ -142,20 +142,16 @@ def manage_orders():
     current_time = datetime.now()
     order_age = (current_time - active_order["order_time"]).total_seconds()
     
-    # Cancel if older than 5 minutes (force exit)
     if order_age > MAX_ORDER_TIME:
-        print(f"⏳ Order Timeout (5 mins), Exiting Trade...")
+        logger.info("⏳ Order Timeout (5 mins), Exiting Trade...")
         try:
-            # Cancel pending orders
             kite.cancel_order(variety="regular", order_id=active_order["buy_order_id"])
             kite.cancel_order(variety="regular", order_id=active_order["sell_order_id"])
             
-            # Get current position
             positions = kite.positions()
             for pos in positions["net"]:
                 if pos["tradingsymbol"] == active_order["symbol"] and pos["quantity"] != 0:
-                    # Square off at market price
-                    squareoff_order = kite.place_order(
+                    kite.place_order(
                         variety="regular",
                         exchange="NSE",
                         tradingsymbol=active_order["symbol"],
@@ -165,15 +161,14 @@ def manage_orders():
                         order_type="MARKET",
                         validity="DAY"
                     )
-                    print(f"🔴 Force Exited Trade (Market Order)")
+                    logger.info("🔴 Force Exited Trade (Market Order)")
                     break
         except Exception as e:
-            print(f"⚠️ Error exiting trade: {e}")
+            logger.error(f"⚠️ Error exiting trade: {e}")
         
         active_order = None
         return
     
-    # Check if order completed
     try:
         buy_status = kite.order_history(active_order["buy_order_id"])[-1]["status"]
         sell_status = kite.order_history(active_order["sell_order_id"])[-1]["status"]
@@ -182,11 +177,10 @@ def manage_orders():
             profit = (active_order["sell_price"] - active_order["buy_price"]) * active_order["quantity"]
             total_profit += profit
             trades_completed += 1
-            print(f"✅ Trade Successful! Profit: ₹{profit} | Total Profit: ₹{total_profit}")
+            logger.info(f"✅ Trade Successful! Profit: ₹{profit} | Total Profit: ₹{total_profit}")
             active_order = None
         
         elif buy_status == "COMPLETE" and sell_status != "COMPLETE":
-            # Modify SELL order if price moves favorably
             current_ltp = price_history[active_order["symbol"]]['prices'][-1]
             if current_ltp > active_order["sell_price"] * 1.02:
                 try:
@@ -199,108 +193,182 @@ def manage_orders():
                     pass
     
     except Exception as e:
-        print(f"⚠️ Error checking order: {e}")
+        logger.error(f"⚠️ Error checking order: {e}")
 
-# WebSocket callbacks
 def on_ticks(ws, ticks):
+    global ws_connected
+    ws_connected = True
+    
     for tick in ticks:
-        # Find the symbol for this instrument token
         symbol = None
         for s, data in price_history.items():
             if data['instrument_token'] == tick['instrument_token']:
                 symbol = s
                 break
                 
-        if symbol:
-            # Update price history
+        if symbol and 'last_price' in tick:
             price_history[symbol]['prices'].append(tick['last_price'])
-            # Keep only the last OSCILLATION_PERIOD prices
             price_history[symbol]['prices'] = price_history[symbol]['prices'][-OSCILLATION_PERIOD:]
+            price_history[symbol]['last_update'] = datetime.now()
 
 def on_connect(ws, response):
-    ws.subscribe(instrument_tokens)
-    ws.set_mode(ws.MODE_LTP, instrument_tokens)
+    global ws_connected
+    ws_connected = True
+    logger.info("WebSocket connected")
+    if current_subscriptions:
+        ws.subscribe(current_subscriptions)
+        ws.set_mode(ws.MODE_QUOTE, current_subscriptions)
 
 def on_error(ws, code, reason):
-    print(f"WebSocket Error: {code} - {reason}")
-    # Implement reconnection logic here if needed
+    global ws_connected
+    ws_connected = False
+    logger.error(f"WebSocket Error: {code} - {reason}")
+    reconnect_websocket()
 
 def on_close(ws, code, reason):
-    print(f"WebSocket Closed: {code} - {reason}")
-    # Implement reconnection logic here if needed
+    global ws_connected
+    ws_connected = False
+    logger.info(f"WebSocket Closed: {code} - {reason}")
+    reconnect_websocket()
 
-# Main trading loop
-def run_bot():
-    global active_order, trades_completed, price_history, instrument_tokens
-    
-    symbols = get_nifty500_symbols()
-    print(f"Loaded {len(symbols)} symbols from Nifty 500")
-    
-    # Initialize price history for first 50 symbols
-    initialized = 0
-    instruments = kite.instruments("NSE")
-    
-    for symbol in symbols[:50]:  # Reduce initial monitoring set
-        try:
-            instrument = next((i for i in instruments if i['tradingsymbol'] == symbol), None)
-            
-            if instrument:
-                instrument_token = instrument['instrument_token']
-                instrument_tokens.append(instrument_token)
-                
-                # Get initial LTP
-                ltp = instrument['last_price']
-                price_history[symbol] = {
-                    'prices': [ltp] * OSCILLATION_PERIOD,
-                    'instrument_token': instrument_token
-                }
-                initialized += 1
-                print(f"Initialized {symbol} @ ₹{ltp}")
-        except Exception as e:
-            print(f"Failed to initialize {symbol}: {str(e)}")
-            continue
-    
-    print(f"🚀 Bot Started | Tracking {initialized} symbols | Capital: ₹1,00,000")
-    
-    # Initialize KiteTicker
+def reconnect_websocket():
+    global kws
+    time.sleep(RECONNECT_DELAY)
+    logger.info("Attempting to reconnect WebSocket...")
+    try:
+        if kws:
+            kws.close()
+        initialize_websocket()
+    except Exception as e:
+        logger.error(f"Reconnection failed: {e}")
+
+def initialize_websocket():
+    global kws
     kws = KiteTicker(api_key=api_key, access_token=enctoken)
-    
-    # Assign callbacks
     kws.on_ticks = on_ticks
     kws.on_connect = on_connect
     kws.on_error = on_error
     kws.on_close = on_close
-    
-    # Start WebSocket in a thread
     kws.connect(threaded=True)
+
+def update_subscriptions(new_tokens):
+    global current_subscriptions
+    
+    if not kws or not ws_connected:
+        current_subscriptions = new_tokens
+        return
+    
+    tokens_to_unsubscribe = list(set(current_subscriptions) - set(new_tokens))
+    if tokens_to_unsubscribe:
+        try:
+            kws.unsubscribe(tokens_to_unsubscribe)
+        except Exception as e:
+            logger.error(f"Error unsubscribing: {e}")
+
+    tokens_to_subscribe = list(set(new_tokens) - set(current_subscriptions))
+    if tokens_to_subscribe:
+        try:
+            kws.subscribe(tokens_to_subscribe)
+            kws.set_mode(kws.MODE_QUOTE, tokens_to_subscribe)
+        except Exception as e:
+            logger.error(f"Error subscribing: {e}")
+
+    current_subscriptions = new_tokens
+
+def rotate_symbol_subscription():
+    global symbol_queue
+    
+    if not symbol_queue:
+        symbols = get_nifty500_symbols()
+        instruments = kite.instruments("NSE")
+        
+        symbol_queue = []
+        for symbol in symbols:
+            instrument = next((i for i in instruments if i['tradingsymbol'] == symbol), None)
+            if instrument:
+                symbol_queue.append({
+                    'symbol': symbol,
+                    'instrument_token': instrument['instrument_token']
+                })
+        
+        np.random.shuffle(symbol_queue)
+    
+    batch_size = MAX_CONCURRENT_SUBS if active_order is None else 1
+    batch = symbol_queue[:batch_size]
+    symbol_queue = symbol_queue[batch_size:]
+    
+    new_tokens = [s['instrument_token'] for s in batch]
+    update_subscriptions(new_tokens)
+    
+    for s in batch:
+        if s['symbol'] not in price_history:
+            try:
+                hist_data = kite.historical_data(s['instrument_token'], 
+                                               datetime.now() - timedelta(minutes=30), 
+                                               datetime.now(), 
+                                               "minute")
+                if hist_data:
+                    prices = [candle['close'] for candle in hist_data]
+                    price_history[s['symbol']] = {
+                        'prices': prices[-OSCILLATION_PERIOD:] if len(prices) >= OSCILLATION_PERIOD else [prices[-1]] * OSCILLATION_PERIOD,
+                        'instrument_token': s['instrument_token'],
+                        'last_update': datetime.now()
+                    }
+            except Exception as e:
+                logger.error(f"Error initializing {s['symbol']}: {str(e)}")
+    
+    return [s['symbol'] for s in batch]
+
+def run_bot():
+    initialize_websocket()
     
     iteration = 0
+    last_rotation = datetime.now()
+    
     while True:
         iteration += 1
-        print(f"\n=== Iteration {iteration} ===")
+        logger.info(f"\n=== Iteration {iteration} ===")
         
-        # Trading logic
+        if not ws_connected:
+            logger.warning("WebSocket not connected, waiting...")
+            time.sleep(RECONNECT_DELAY)
+            continue
+        
+        if (datetime.now() - last_rotation).total_seconds() > WS_SUBSCRIBE_TIME:
+            current_symbols = rotate_symbol_subscription()
+            logger.info(f"Now monitoring: {', '.join(current_symbols)}")
+            last_rotation = datetime.now()
+        
         if active_order is None:
-            print("Checking for trading opportunities...")
+            logger.info("Checking for trading opportunities...")
             for symbol, data in price_history.items():
-                try:
-                    prices = data['prices']
-                    if len(prices) >= OSCILLATION_PERIOD and is_oscillating(prices) and find_entry_point(prices):
-                        print(f"Found opportunity in {symbol}")
-                        if place_scalp_order(symbol):
-                            break
-                except Exception as e:
-                    print(f"Error evaluating {symbol}: {str(e)}")
-                    continue
+                if 'last_update' in data and (datetime.now() - data['last_update']).total_seconds() < WS_SUBSCRIBE_TIME * 2:
+                    try:
+                        prices = data['prices']
+                        if len(prices) >= OSCILLATION_PERIOD and is_oscillating(prices) and find_entry_point(prices):
+                            logger.info(f"Found opportunity in {symbol}")
+                            if place_scalp_order(symbol):
+                                update_subscriptions([data['instrument_token']])
+                                break
+                    except Exception as e:
+                        logger.error(f"Error evaluating {symbol}: {str(e)}")
+                        continue
         
-        # Order management
         manage_orders()
         
-        # Status update
-        print(f"Active orders: {1 if active_order else 0}")
-        print(f"Total trades: {trades_completed} | Profit: ₹{total_profit}")
+        logger.info(f"Active orders: {1 if active_order else 0}")
+        logger.info(f"Total trades: {trades_completed} | Profit: ₹{total_profit}")
         
-        time.sleep(5)  # 5 second delay between iterations
+        time.sleep(5)
 
 if __name__ == "__main__":
-    run_bot()
+    try:
+        run_bot()
+    except KeyboardInterrupt:
+        logger.info("Shutting down...")
+        if kws:
+            kws.close()
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
+        if kws:
+            kws.close()
