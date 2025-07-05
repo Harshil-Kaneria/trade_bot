@@ -1,22 +1,24 @@
 import os
-from dotenv import load_dotenv
 import time
 import numpy as np
+import pandas as pd
 from datetime import datetime, timedelta
 from kite_trade import *
 from kiteconnect import KiteTicker
+from dotenv import load_dotenv
 import logging
+from threading import Lock
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Load credentials
 load_dotenv(override=True)
-
-# Initialize Kite API
 enctoken = os.getenv("ENCTOKEN")
-api_key = os.getenv("API_KEY")  # Add your API key to .env
+api_key = os.getenv("API_KEY")
 kite = KiteApp(enctoken=enctoken)
+user_id = kite.profile()["user_id"]
 
 # Configuration
 CAPITAL = 100000
@@ -32,18 +34,37 @@ RECONNECT_DELAY = 5  # seconds between reconnect attempts
 active_order = None
 trades_completed = 0
 total_profit = 0
-price_history = {}
-current_subscriptions = []
+price_lock = Lock()
 kws = None
-all_instruments = []
-symbol_queue = []
 ws_connected = False
 
-def get_nifty500_symbols():
-    global all_instruments
-    if not all_instruments:
-        all_instruments = kite.instruments("NSE")
-    return [inst['tradingsymbol'] for inst in all_instruments if inst['tradingsymbol'].endswith('EQ')][:500]
+# Prepare symbol list and instrument info
+symbols_list = pd.read_csv('data_500.csv')['SYMBOL'].tolist() if os.path.exists('data_500.csv') else []
+instruments = pd.DataFrame(kite.instruments("NSE"))
+df = instruments[instruments["tradingsymbol"].isin(symbols_list)]
+df = df[df["segment"] != "INDICES"]
+df = df[['instrument_token', 'tradingsymbol']].reset_index(drop=True)
+
+# Initialize price tracking
+df['last_price'] = 0.0
+df['price_history'] = df['tradingsymbol'].apply(lambda x: [])
+token_to_index = {token: idx for idx, token in enumerate(df['instrument_token'])}
+tokens = df['instrument_token'].tolist()
+current_subscriptions = []
+
+def get_price_history(symbol, instrument_token, minutes=30):
+    try:
+        hist_data = kite.historical_data(
+            instrument_token,
+            datetime.now() - timedelta(minutes=minutes),
+            datetime.now(),
+            "minute"
+        )
+        if hist_data:
+            return [candle['close'] for candle in hist_data]
+    except Exception as e:
+        logger.error(f"Error fetching history for {symbol}: {e}")
+    return []
 
 def calculate_quantity(price):
     quantity = int(CAPITAL / price)
@@ -80,11 +101,25 @@ def find_entry_point(prices):
     
     return current_price <= last_trough * 1.005
 
-def place_scalp_order(symbol):
+def place_scalp_order(symbol, instrument_token):
     global active_order
 
-    ltp = price_history[symbol]['prices'][-1]
-    quantity = calculate_quantity(ltp)
+    with price_lock:
+        idx = token_to_index.get(instrument_token)
+        if idx is None:
+            return False
+        
+        ltp = df.at[idx, 'last_price']
+        price_history = df.at[idx, 'price_history']
+        
+        if not price_history:
+            price_history = get_price_history(symbol, instrument_token)
+            if not price_history:
+                return False
+            df.at[idx, 'price_history'] = price_history
+        
+        ltp = price_history[-1] if price_history else ltp
+        quantity = calculate_quantity(ltp)
 
     buy_price = round(ltp * 0.998, 2)
     sell_price = round(buy_price + (TARGET_PROFIT / quantity), 2)
@@ -120,6 +155,7 @@ def place_scalp_order(symbol):
 
         active_order = {
             "symbol": symbol,
+            "instrument_token": instrument_token,
             "buy_order_id": buy_order,
             "sell_order_id": sell_order,
             "quantity": quantity,
@@ -181,16 +217,19 @@ def manage_orders():
             active_order = None
         
         elif buy_status == "COMPLETE" and sell_status != "COMPLETE":
-            current_ltp = price_history[active_order["symbol"]]['prices'][-1]
-            if current_ltp > active_order["sell_price"] * 1.02:
-                try:
-                    kite.modify_order(
-                        variety="regular",
-                        order_id=active_order["sell_order_id"],
-                        price=round(current_ltp * 0.998, 2)
-                    )
-                except:
-                    pass
+            with price_lock:
+                idx = token_to_index.get(active_order["instrument_token"])
+                if idx is not None:
+                    current_ltp = df.at[idx, 'last_price']
+                    if current_ltp > active_order["sell_price"] * 1.02:
+                        try:
+                            kite.modify_order(
+                                variety="regular",
+                                order_id=active_order["sell_order_id"],
+                                price=round(current_ltp * 0.998, 2)
+                            )
+                        except Exception as e:
+                            logger.error(f"⚠️ Error modifying order: {e}")
     
     except Exception as e:
         logger.error(f"⚠️ Error checking order: {e}")
@@ -199,17 +238,19 @@ def on_ticks(ws, ticks):
     global ws_connected
     ws_connected = True
     
-    for tick in ticks:
-        symbol = None
-        for s, data in price_history.items():
-            if data['instrument_token'] == tick['instrument_token']:
-                symbol = s
-                break
-                
-        if symbol and 'last_price' in tick:
-            price_history[symbol]['prices'].append(tick['last_price'])
-            price_history[symbol]['prices'] = price_history[symbol]['prices'][-OSCILLATION_PERIOD:]
-            price_history[symbol]['last_update'] = datetime.now()
+    with price_lock:
+        for tick in ticks:
+            token = tick['instrument_token']
+            price = tick.get('last_price', 0.0)
+            idx = token_to_index.get(token)
+            if idx is not None:
+                df.at[idx, 'last_price'] = price
+                # Update price history
+                price_history = df.at[idx, 'price_history']
+                price_history.append(price)
+                if len(price_history) > OSCILLATION_PERIOD:
+                    price_history.pop(0)
+                df.at[idx, 'price_history'] = price_history
 
 def on_connect(ws, response):
     global ws_connected
@@ -244,7 +285,7 @@ def reconnect_websocket():
 
 def initialize_websocket():
     global kws
-    kws = KiteTicker(api_key=api_key, access_token=enctoken)
+    kws = KiteTicker(api_key=api_key, access_token=f"{enctoken}&user_id={user_id}")
     kws.on_ticks = on_ticks
     kws.on_connect = on_connect
     kws.on_error = on_error
@@ -276,48 +317,25 @@ def update_subscriptions(new_tokens):
     current_subscriptions = new_tokens
 
 def rotate_symbol_subscription():
-    global symbol_queue
-    
-    if not symbol_queue:
-        symbols = get_nifty500_symbols()
-        instruments = kite.instruments("NSE")
-        
-        symbol_queue = []
-        for symbol in symbols:
-            instrument = next((i for i in instruments if i['tradingsymbol'] == symbol), None)
-            if instrument:
-                symbol_queue.append({
-                    'symbol': symbol,
-                    'instrument_token': instrument['instrument_token']
-                })
-        
-        np.random.shuffle(symbol_queue)
+    if len(df) == 0:
+        logger.error("No symbols available for subscription")
+        return []
     
     batch_size = MAX_CONCURRENT_SUBS if active_order is None else 1
-    batch = symbol_queue[:batch_size]
-    symbol_queue = symbol_queue[batch_size:]
+    batch = df.sample(min(batch_size, len(df)))
     
-    new_tokens = [s['instrument_token'] for s in batch]
+    new_tokens = batch['instrument_token'].tolist()
     update_subscriptions(new_tokens)
     
-    for s in batch:
-        if s['symbol'] not in price_history:
-            try:
-                hist_data = kite.historical_data(s['instrument_token'], 
-                                               datetime.now() - timedelta(minutes=30), 
-                                               datetime.now(), 
-                                               "minute")
+    # Initialize price history for new symbols
+    with price_lock:
+        for _, row in batch.iterrows():
+            if not df.at[row.name, 'price_history']:
+                hist_data = get_price_history(row['tradingsymbol'], row['instrument_token'])
                 if hist_data:
-                    prices = [candle['close'] for candle in hist_data]
-                    price_history[s['symbol']] = {
-                        'prices': prices[-OSCILLATION_PERIOD:] if len(prices) >= OSCILLATION_PERIOD else [prices[-1]] * OSCILLATION_PERIOD,
-                        'instrument_token': s['instrument_token'],
-                        'last_update': datetime.now()
-                    }
-            except Exception as e:
-                logger.error(f"Error initializing {s['symbol']}: {str(e)}")
+                    df.at[row.name, 'price_history'] = hist_data[-OSCILLATION_PERIOD:] if len(hist_data) >= OSCILLATION_PERIOD else [hist_data[-1]] * OSCILLATION_PERIOD
     
-    return [s['symbol'] for s in batch]
+    return batch['tradingsymbol'].tolist()
 
 def run_bot():
     initialize_websocket()
@@ -341,18 +359,21 @@ def run_bot():
         
         if active_order is None:
             logger.info("Checking for trading opportunities...")
-            for symbol, data in price_history.items():
-                if 'last_update' in data and (datetime.now() - data['last_update']).total_seconds() < WS_SUBSCRIBE_TIME * 2:
-                    try:
-                        prices = data['prices']
-                        if len(prices) >= OSCILLATION_PERIOD and is_oscillating(prices) and find_entry_point(prices):
-                            logger.info(f"Found opportunity in {symbol}")
-                            if place_scalp_order(symbol):
-                                update_subscriptions([data['instrument_token']])
-                                break
-                    except Exception as e:
-                        logger.error(f"Error evaluating {symbol}: {str(e)}")
-                        continue
+            with price_lock:
+                for _, row in df.iterrows():
+                    symbol = row['tradingsymbol']
+                    price_history = row['price_history']
+                    
+                    if len(price_history) >= OSCILLATION_PERIOD:
+                        try:
+                            if is_oscillating(price_history) and find_entry_point(price_history):
+                                logger.info(f"Found opportunity in {symbol}")
+                                if place_scalp_order(symbol, row['instrument_token']):
+                                    update_subscriptions([row['instrument_token']])
+                                    break
+                        except Exception as e:
+                            logger.error(f"Error evaluating {symbol}: {str(e)}")
+                            continue
         
         manage_orders()
         
