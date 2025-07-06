@@ -128,29 +128,39 @@ def place_scalp_order(symbol, instrument_token):
 
     try:
         buy_order = kite.place_order(
-            variety="regular",
-            exchange="NSE",
+            variety=kite.VARIETY_REGULAR,
+            exchange=kite.EXCHANGE_NSE,
             tradingsymbol=symbol,
-            transaction_type="BUY",
+            transaction_type=kite.TRANSACTION_TYPE_BUY,
             quantity=quantity,
-            product="MIS",
-            order_type="LIMIT",
+            product=kite.PRODUCT_CNC,
+            order_type=kite.ORDER_TYPE_LIMIT,
             price=buy_price,
-            validity="DAY",
-            tag="OSC180"
+            validity=None,
+            disclosed_quantity=None,
+            trigger_price=None,
+            squareoff=None,
+            stoploss=None,
+            trailing_stoploss=None,
+            tag="HK"
         )
 
         sell_order = kite.place_order(
-            variety="regular",
-            exchange="NSE",
+            variety=kite.VARIETY_REGULAR,
+            exchange=kite.EXCHANGE_NSE,
             tradingsymbol=symbol,
-            transaction_type="SELL",
+            transaction_type=kite.TRANSACTION_TYPE_SELL,
             quantity=quantity,
-            product="MIS",
-            order_type="LIMIT",
+            product=kite.PRODUCT_CNC,
+            order_type=kite.ORDER_TYPE_LIMIT,
             price=sell_price,
-            validity="DAY",
-            tag="OSC180"
+            validity=None,
+            disclosed_quantity=None,
+            trigger_price=None,
+            squareoff=None,
+            stoploss=None,
+            trailing_stoploss=None,
+            tag="HK"
         )
 
         active_order = {
