@@ -21,7 +21,7 @@ kite = KiteApp(enctoken=enctoken)
 user_id = kite.profile()["user_id"]
 
 # Configuration
-CAPITAL = 100000
+CAPITAL = 50000
 TARGET_PROFIT = 180
 MAX_ORDER_TIME = 300
 RISK_PER_TRADE = 0.01
@@ -198,14 +198,21 @@ def manage_orders():
             for pos in positions["net"]:
                 if pos["tradingsymbol"] == active_order["symbol"] and pos["quantity"] != 0:
                     kite.place_order(
-                        variety="regular",
-                        exchange="NSE",
+                        variety=kite.VARIETY_REGULAR,
+                        exchange=kite.EXCHANGE_NSE,
                         tradingsymbol=active_order["symbol"],
-                        transaction_type="SELL",
+                        transaction_type=kite.TRANSACTION_TYPE_SELL,
                         quantity=abs(pos["quantity"]),
-                        product="MIS",
-                        order_type="MARKET",
-                        validity="DAY"
+                        product=kite.PRODUCT_CNC,
+                        order_type=kite.ORDER_TYPE_MARKET,
+                        price=None,
+                        validity=None,
+                        disclosed_quantity=None,
+                        trigger_price=None,
+                        squareoff=None,
+                        stoploss=None,
+                        trailing_stoploss=None,
+                        tag="HK"
                     )
                     logger.info("🔴 Force Exited Trade (Market Order)")
                     break
