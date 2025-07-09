@@ -1,5 +1,33 @@
 {
-    "cannonshot_stocks": [],
+    "cannonshot_stocks": [
+        {
+            "instrument": {
+                "index": 480,
+                "instrument_token": 6936833,
+                "exchange_token": "27097",
+                "tradingsymbol": "NIVABUPA",
+                "name": "NIVA BUPA HEALTH INS CO L",
+                "last_price": 0.0,
+                "expiry": null,
+                "strike": 0.0,
+                "tick_size": 0.01,
+                "lot_size": 1,
+                "instrument_type": "EQ",
+                "segment": "NSE",
+                "exchange": "NSE"
+            },
+            "current_price": 89.19,
+            "volume": 22798329,
+            "volume_ma": 3838291.1,
+            "volume_ratio": 5.94,
+            "delivery_ratio": 5.94,
+            "rsi": 71.45,
+            "prev_high": 84.7,
+            "prev_week_high": 85.9,
+            "date": "2025-07-09",
+            "score": 66
+        }
+    ],
     "analysis_parameters": {
         "MONEY_CONTROL": true,
         "ISSCOREFILTER": true,
@@ -18,7 +46,7 @@
         "downward_threshold": -0.5,
         "lookback_period": 3
     },
-    "last_updated": "2025-07-08T15:27:47.089165",
-    "total_signals": 0,
-    "cannonshot_stocks_csv": ""
+    "last_updated": "2025-07-09T15:22:33.349514",
+    "total_signals": 1,
+    "cannonshot_stocks_csv": "NSE:NIVABUPA"
 }
