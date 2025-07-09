@@ -42,9 +42,9 @@ except Exception as e:
     exit()
 
 # Configuration
-CAPITAL = 100000
+CAPITAL = 50000
 TARGET_PROFIT_PER_TRADE = 180 # Adjusted for more trades
-MAX_ORDER_TIME = 60 # Reduced to 1 minute for faster exits
+MAX_ORDER_TIME = 300 # Reduced to 1 minute for faster exits
 RISK_PER_TRADE = 0.01 # Keep as percentage of capital
 OSCILLATION_PERIOD = 20
 WS_SUBSCRIBE_TIME = 15 # Shorter subscription rotation
@@ -232,7 +232,7 @@ def place_scalp_order(symbol, instrument_token, current_ltp):
             return False
 
         # Target 0.2% profit per share
-        sell_price_target = round(current_ltp * 1.002, 2)
+        sell_price_target = round(current_ltp * 1.002 / 0.05) * 0.05 # Corrected for tick size
         
         logger.info(f"📈 Placing Buy Order: {symbol} | Qty: {quantity} @ MARKET | Target Sell: ₹{sell_price_target}")
 
@@ -243,11 +243,12 @@ def place_scalp_order(symbol, instrument_token, current_ltp):
             tradingsymbol=symbol,
             transaction_type=kite.TRANSACTION_TYPE_BUY,
             quantity=quantity,
-            product=kite.PRODUCT_CNC, # Using CNC for simpler position management
-            order_type=kite.ORDER_TYPE_MARKET, # Changed to MARKET
+            product=kite.PRODUCT_CNC,
+            order_type=kite.ORDER_TYPE_MARKET,
             tag="SCALPER_BUY"
         )
-        buy_order_id = buy_order_response.get('order_id') # Get order_id from response
+        # FIX: Your wrapper returns the order_id directly, not a dictionary with 'order_id' key
+        buy_order_id = buy_order_response # Corrected this line
 
         if not buy_order_id:
             logger.error(f"Failed to get order_id for buy order of {symbol}. Response: {buy_order_response}")
@@ -260,14 +261,14 @@ def place_scalp_order(symbol, instrument_token, current_ltp):
             "symbol": symbol,
             "instrument_token": instrument_token,
             "buy_order_id": buy_order_id,
-            "sell_order_id": None, # Will be set after buy is complete
+            "sell_order_id": None,
             "quantity": quantity,
-            "buy_price": None, # Will be set after buy is complete (actual execution price)
+            "buy_price": None,
             "sell_price_target": sell_price_target,
             "order_time": datetime.now(),
             "buy_completed": False,
             "sell_completed": False,
-            "exit_attempted": False # To prevent multiple exit attempts
+            "exit_attempted": False
         }
         pending_trades[buy_order_id] = trade_info
         
