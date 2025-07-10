@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # Load credentials
 load_dotenv(override=True)
 enctoken = os.getenv("ENCTOKEN")
-api_key = 'API_KEY'
+api_key = 'API_KEY' # Make sure to replace 'API_KEY' with your actual API key.
 
 # Global kite object
 kite = None
@@ -44,13 +44,18 @@ TARGET_PROFIT_PER_TRADE = 183
 MAX_ORDER_TIME = 300 # Reduced to 5 minutes (300 seconds) for faster exits
 RISK_PER_TRADE = 0.01 # Keep as percentage of capital
 OSCILLATION_PERIOD = 30 # Increased period for better volatility assessment from tick data
-VOLATILITY_THRESHOLD = 0.001 # Minimum percentage movement required (e.g., 0.1% within period)
+VOLATILITY_THRESHOLD = 0.001 # Minimum percentage movement required (e.1% within period)
 WS_SUBSCRIBE_TIME = 30 # Shorter subscription rotation
 MAX_CONCURRENT_SUBS = 20 # Increased concurrent subscriptions to monitor more stocks
 RECONNECT_DELAY = 5 # seconds between reconnect attempts
 MIN_PRICE = 100 # Minimum stock price to consider
 MAX_PRICE = 3000 # Maximum stock price to consider
 MAX_ACTIVE_TRADES = 1 # Limit concurrent active (pending) trades
+
+# Trend analysis parameters
+SHORT_EMA_PERIOD = 5  # Shorter EMA period for trend detection
+LONG_EMA_PERIOD = 20  # Longer EMA period for trend detection
+TREND_STRENGTH_THRESHOLD = 0.0005 # Minimum difference in EMAs for a strong trend indication
 
 # Trackers
 pending_trades = {}
@@ -72,8 +77,7 @@ try:
     instruments = pd.DataFrame(kite.instruments("NSE"))
     df = instruments[instruments["tradingsymbol"].isin(symbols_list)]
     df = df[df["segment"] != "INDICES"]
-    # ❌ REMOVE or COMMENT OUT this line if initializing outside market hours
-    # df = df[df['last_price'] > 0] # Filter out instruments with no last price
+    # df = df[df['last_price'] > 0] # Filter out instruments with no last price (REMOVE for testing outside market hours if not already commented)
     df = df[['instrument_token', 'tradingsymbol', 'last_price']].reset_index(drop=True)
     if df.empty:
         logger.critical("No valid symbols found after filtering instruments. Check data_500.csv, NSE instruments, and filters.")
@@ -107,14 +111,15 @@ def get_price_history(symbol, instrument_token, minutes=30):
         logger.error(f"Error fetching historical minute data for {symbol} ({instrument_token}): {e}")
     return []
 
-def calculate_quantity(price):
+def calculate_quantity(price, is_short_sell=False):
     """Calculates quantity based on target profit and price."""
     if price <= 0:
         return 0
     
-    # Calculate quantity to achieve TARGET_PROFIT_PER_TRADE with a small price move
-    # Assuming we target a 0.2% profit per share (as implied by target sell price)
-    target_profit_per_share = price * 0.002
+    # Target a 0.2% profit per share for both long and short
+    target_profit_percentage = 0.002
+    target_profit_per_share = price * target_profit_percentage
+    
     if target_profit_per_share <= 0:
         return 0
     
@@ -126,6 +131,37 @@ def calculate_quantity(price):
     
     return quantity
 
+def calculate_ema(prices, period):
+    """Calculates Exponential Moving Average."""
+    if len(prices) < period:
+        return None
+    ema = pd.Series(prices).ewm(span=period, adjust=False).mean().iloc[-1]
+    return ema
+
+def determine_trend(prices):
+    """
+    Determines the short-term trend based on EMA crossovers and current price position.
+    Returns 'positive', 'negative', or 'neutral'.
+    """
+    if len(prices) < max(SHORT_EMA_PERIOD, LONG_EMA_PERIOD) * 2: # Need enough data for reliable EMA
+        return 'neutral'
+
+    short_ema = calculate_ema(prices, SHORT_EMA_PERIOD)
+    long_ema = calculate_ema(prices, LONG_EMA_PERIOD)
+    current_price = prices[-1]
+
+    if short_ema is None or long_ema is None:
+        return 'neutral'
+
+    # Check for positive trend
+    if short_ema > long_ema and current_price > short_ema and (short_ema - long_ema) / long_ema > TREND_STRENGTH_THRESHOLD:
+        return 'positive'
+    
+    # Check for negative trend
+    if short_ema < long_ema and current_price < short_ema and (long_ema - short_ema) / long_ema > TREND_STRENGTH_THRESHOLD:
+        return 'negative'
+    
+    return 'neutral'
 
 def is_volatile_and_oscillating(prices):
     """
@@ -170,11 +206,10 @@ def is_volatile_and_oscillating(prices):
             
     return True
 
-
-def find_entry_point(prices):
+def find_entry_point_long(prices):
     """
     Identifies a potential buy entry point in an oscillating market using tick data.
-    Looks for a dip within the oscillating range.
+    Looks for a dip within the oscillating range suitable for a long position.
     """
     if len(prices) < OSCILLATION_PERIOD:
         return False
@@ -215,11 +250,54 @@ def find_entry_point(prices):
 
     return False
 
-
-def place_scalp_order(symbol, instrument_token, current_ltp):
+def find_entry_point_short(prices):
     """
-    Places buy and sell orders for scalping.
-    Now supports market orders for buy and limit for sell for quicker entry.
+    Identifies a potential sell entry point in an oscillating market using tick data.
+    Looks for a peak within the oscillating range suitable for a short position.
+    """
+    if len(prices) < OSCILLATION_PERIOD:
+        return False
+    
+    current_price = prices[-1]
+    
+    # Short-term SMA (e.g., last 5 ticks)
+    sma_short = np.mean(prices[-5:])
+    
+    # Long-term SMA (e.g., last OSCILLATION_PERIOD ticks)
+    sma_long = np.mean(prices[-OSCILLATION_PERIOD:])
+    
+    # Condition 1: Current price is above the short-term SMA (indicates a recent peak)
+    if current_price <= sma_short:
+        return False
+        
+    # Condition 2: Short-term SMA should not be significantly below long-term SMA,
+    # and ideally, it should be slightly above or close to it, confirming a peak within a range.
+    if sma_short < sma_long * 0.999: # Avoid selling if short-term is too strong down
+        return False
+        
+    # Condition 3: Price should be in the upper half of the recent oscillation range (but not breaking up)
+    recent_min = np.min(prices[-OSCILLATION_PERIOD:])
+    recent_max = np.max(prices[-OSCILLATION_PERIOD:])
+    
+    if recent_max == recent_min: # Flat prices, no entry
+        return False
+
+    # Price should be closer to the recent maximum, but not exactly at it if it's breaking up.
+    # Check if current price is within the upper 40% of the range
+    if current_price < (recent_max - (recent_max - recent_min) * 0.4):
+        return False
+
+    # Condition 4: Current price is higher than the price 'n' ticks ago within the short-term trend
+    # This specifically looks for a *recent* upward tick or two before the entry
+    if len(prices) >= 3 and current_price > prices[-2]: # Check if current is higher than previous tick
+        return True
+
+    return False
+
+
+def place_trade_order(symbol, instrument_token, current_ltp, trend_direction):
+    """
+    Places trade orders (buy for long, sell for short) based on trend direction.
     """
     global pending_trades
 
@@ -228,57 +306,78 @@ def place_scalp_order(symbol, instrument_token, current_ltp):
         return False
 
     try:
-        quantity = calculate_quantity(current_ltp)
+        quantity = 0
+        order_type = ""
+        product_type = ""
+        transaction_type = ""
+        target_price = 0.0
+        trade_type = ""
+
+        if trend_direction == 'positive' or trend_direction == 'neutral':
+            trade_type = 'LONG'
+            quantity = calculate_quantity(current_ltp, is_short_sell=False)
+            product_type = kite.PRODUCT_CNC # Delivery for long-term/swing
+            transaction_type = kite.TRANSACTION_TYPE_BUY
+            # Target 0.2% profit per share for long
+            target_price = round(current_ltp * 1.002 / 0.05) * 0.05
+            logger.info(f"📈 Placing LONG Buy Order: {symbol} | Qty: {quantity} @ MARKET | Target Sell: ₹{target_price:.2f} (CNC)")
+
+        elif trend_direction == 'negative':
+            trade_type = 'SHORT'
+            quantity = calculate_quantity(current_ltp, is_short_sell=True)
+            product_type = kite.PRODUCT_MIS # Intraday for short-selling
+            transaction_type = kite.TRANSACTION_TYPE_SELL
+            # Target 0.2% profit per share for short (buy back lower)
+            target_price = round(current_ltp * 0.998 / 0.05) * 0.05 # Target 0.2% lower for buyback
+            logger.info(f"📉 Placing SHORT Sell Order: {symbol} | Qty: {quantity} @ MARKET | Target Buy: ₹{target_price:.2f} (MIS)")
+        else:
+            logger.warning(f"No clear trend for {symbol}. Skipping order placement.")
+            return False
+
         if quantity == 0:
             logger.warning(f"Invalid quantity for {symbol} at {current_ltp}. Skipping order.")
             return False
 
-        # Target 0.2% profit per share
-        # Ensure sell price target respects NSE tick size (0.05)
-        sell_price_target = round(current_ltp * 1.002 / 0.05) * 0.05
-        
-        logger.info(f"📈 Placing Buy Order: {symbol} | Qty: {quantity} @ MARKET | Target Sell: ₹{sell_price_target:.2f}")
-
-        # Place buy order (Market Order for instant execution)
-        buy_order_response = kite.place_order(
+        # Place the initial order (Buy for Long, Sell for Short)
+        initial_order_response = kite.place_order(
             variety=kite.VARIETY_REGULAR,
             exchange=kite.EXCHANGE_NSE,
             tradingsymbol=symbol,
-            transaction_type=kite.TRANSACTION_TYPE_BUY,
+            transaction_type=transaction_type,
             quantity=quantity,
-            product=kite.PRODUCT_CNC,
+            product=product_type,
             order_type=kite.ORDER_TYPE_MARKET,
-            tag="SCALPER_BUY"
+            tag=f"SCALPER_{trade_type}_INITIAL"
         )
-        # FIX: Your wrapper returns the order_id directly, not a dictionary with 'order_id' key
-        buy_order_id = buy_order_response # Corrected this line as discussed
+        initial_order_id = initial_order_response
 
-        if not buy_order_id:
-            logger.error(f"Failed to get order_id for buy order of {symbol}. Response: {buy_order_response}")
+        if not initial_order_id:
+            logger.error(f"Failed to get order_id for initial {trade_type} order of {symbol}. Response: {initial_order_response}")
             return False
 
-        logger.info(f"Buy Order placed for {symbol}: {buy_order_id}")
+        logger.info(f"Initial {trade_type} Order placed for {symbol}: {initial_order_id}")
 
         # Store pending trade information
         trade_info = {
             "symbol": symbol,
             "instrument_token": instrument_token,
-            "buy_order_id": buy_order_id,
-            "sell_order_id": None,
+            "initial_order_id": initial_order_id,
+            "exit_order_id": None,
             "quantity": quantity,
-            "buy_price": None,
-            "sell_price_target": sell_price_target,
+            "initial_price": None, # This will be the avg buy price for long, or avg sell price for short
+            "target_price": target_price,
             "order_time": datetime.now(),
-            "buy_completed": False,
-            "sell_completed": False,
-            "exit_attempted": False
+            "initial_completed": False,
+            "exit_completed": False,
+            "exit_attempted": False,
+            "trade_type": trade_type # 'LONG' or 'SHORT'
         }
-        pending_trades[buy_order_id] = trade_info
+        pending_trades[initial_order_id] = trade_info
         
         return True
 
     except Exception as e:
-        logger.error(f"❌ Order Placement Failed for {symbol}: {str(e)}")
+        logger.error(f"❌ Order Placement Failed for {symbol} ({trade_type}): {str(e)}")
         return False
 
 def get_order_details_from_history(order_id):
@@ -293,7 +392,7 @@ def get_order_details_from_history(order_id):
     return None
 
 def manage_orders():
-    """Manages all pending orders, including placing sell orders and exiting on timeout."""
+    """Manages all pending orders, including placing exit orders and exiting on timeout."""
     global trades_completed, total_profit, pending_trades
 
     orders_to_check = list(pending_trades.keys())
@@ -307,61 +406,72 @@ def manage_orders():
         order_age = (current_time - trade["order_time"]).total_seconds()
 
         try:
-            # Check buy order status
-            if not trade["buy_completed"]:
-                buy_order_status = get_order_details_from_history(trade["buy_order_id"])
+            # Check initial order status
+            if not trade["initial_completed"]:
+                initial_order_status = get_order_details_from_history(trade["initial_order_id"])
                 
-                if buy_order_status and buy_order_status["status"] == "COMPLETE":
-                    trade["buy_completed"] = True
-                    trade["buy_price"] = buy_order_status["average_price"]
-                    logger.info(f"✅ Buy Order COMPLETE for {trade['symbol']} @ ₹{trade['buy_price']:.2f}")
+                if initial_order_status and initial_order_status["status"] == "COMPLETE":
+                    trade["initial_completed"] = True
+                    trade["initial_price"] = initial_order_status["average_price"]
+                    logger.info(f"✅ Initial {trade['trade_type']} Order COMPLETE for {trade['symbol']} @ ₹{trade['initial_price']:.2f}")
 
-                    # Immediately place the sell limit order after buy is complete
-                    if trade["sell_order_id"] is None:
-                        # Ensure sell price is higher than buy price for profit
-                        # Re-calculate target to ensure it's profitable and respects tick size
-                        if trade["sell_price_target"] <= trade["buy_price"]:
-                            trade["sell_price_target"] = round(trade["buy_price"] * 1.002 / 0.05) * 0.05
-                            logger.warning(f"Adjusted sell target for {trade['symbol']} to ensure profit: ₹{trade['sell_price_target']:.2f}")
-                            
-                        sell_order_response = kite.place_order(
+                    # Immediately place the exit limit order after initial is complete
+                    if trade["exit_order_id"] is None:
+                        exit_transaction_type = kite.TRANSACTION_TYPE_SELL if trade["trade_type"] == 'LONG' else kite.TRANSACTION_TYPE_BUY
+                        exit_product_type = kite.PRODUCT_CNC if trade["trade_type"] == 'LONG' else kite.PRODUCT_MIS
+
+                        # Ensure target price is profitable and respects tick size
+                        if trade["trade_type"] == 'LONG' and trade["target_price"] <= trade["initial_price"]:
+                            trade["target_price"] = round(trade["initial_price"] * 1.002 / 0.05) * 0.05
+                            logger.warning(f"Adjusted LONG sell target for {trade['symbol']} to ensure profit: ₹{trade['target_price']:.2f}")
+                        elif trade["trade_type"] == 'SHORT' and trade["target_price"] >= trade["initial_price"]:
+                            trade["target_price"] = round(trade["initial_price"] * 0.998 / 0.05) * 0.05
+                            logger.warning(f"Adjusted SHORT buy target for {trade['symbol']} to ensure profit: ₹{trade['target_price']:.2f}")
+
+                        exit_order_response = kite.place_order(
                             variety=kite.VARIETY_REGULAR,
                             exchange=kite.EXCHANGE_NSE,
                             tradingsymbol=trade["symbol"],
-                            transaction_type=kite.TRANSACTION_TYPE_SELL,
+                            transaction_type=exit_transaction_type,
                             quantity=trade["quantity"],
-                            product=kite.PRODUCT_CNC,
-                            order_type=kite.ORDER_TYPE_LIMIT, # Use LIMIT for target profit
-                            price=trade["sell_price_target"],
-                            tag="SCALPER_SELL"
+                            product=exit_product_type,
+                            order_type=kite.ORDER_TYPE_LIMIT, # Use LIMIT for target profit/loss
+                            price=trade["target_price"],
+                            tag=f"SCALPER_{trade['trade_type']}_EXIT"
                         )
-                        # FIX: Your wrapper returns the order_id directly for sell orders too
-                        sell_order_id = sell_order_response 
-                        if sell_order_id:
-                            trade["sell_order_id"] = sell_order_id
-                            logger.info(f"Placed Sell Order for {trade['symbol']}: {sell_order_id} @ ₹{trade['sell_price_target']:.2f}")
+                        exit_order_id = exit_order_response 
+                        if exit_order_id:
+                            trade["exit_order_id"] = exit_order_id
+                            logger.info(f"Placed Exit Order for {trade['symbol']}: {exit_order_id} @ ₹{trade['target_price']:.2f}")
                         else:
-                            logger.error(f"Failed to get order_id for sell order of {trade['symbol']}. Response: {sell_order_response}")
-                elif buy_order_status and buy_order_status["status"] in ["CANCELLED", "REJECTED"]:
-                    logger.warning(f"Buy Order for {trade['symbol']} {buy_order_status['status']}. Removing from pending trades.")
+                            logger.error(f"Failed to get order_id for exit order of {trade['symbol']}. Response: {exit_order_response}")
+                elif initial_order_status and initial_order_status["status"] in ["CANCELLED", "REJECTED"]:
+                    logger.warning(f"Initial {trade['trade_type']} Order for {trade['symbol']} {initial_order_status['status']}. Removing from pending trades.")
                     del pending_trades[order_id]
                     continue
 
-            # Check sell order status (if placed)
-            if trade["buy_completed"] and not trade["sell_completed"] and trade["sell_order_id"]:
-                sell_order_status = get_order_details_from_history(trade["sell_order_id"])
+            # Check exit order status (if placed)
+            if trade["initial_completed"] and not trade["exit_completed"] and trade["exit_order_id"]:
+                exit_order_status = get_order_details_from_history(trade["exit_order_id"])
                 
-                if sell_order_status and sell_order_status["status"] == "COMPLETE":
-                    trade["sell_completed"] = True
-                    executed_sell_price = sell_order_status.get("average_price", trade["sell_price_target"])
-                    profit = (executed_sell_price - trade["buy_price"]) * trade["quantity"]
+                if exit_order_status and exit_order_status["status"] == "COMPLETE":
+                    trade["exit_completed"] = True
+                    executed_exit_price = exit_order_status.get("average_price", trade["target_price"])
+                    
+                    profit = 0
+                    if trade["trade_type"] == 'LONG':
+                        profit = (executed_exit_price - trade["initial_price"]) * trade["quantity"]
+                    elif trade["trade_type"] == 'SHORT':
+                        # For short, initial price is sell price, executed_exit_price is buy-to-cover price
+                        profit = (trade["initial_price"] - executed_exit_price) * trade["quantity"]
+
                     total_profit += profit
                     trades_completed += 1
-                    logger.info(f"✅ Trade Successful! {trade['symbol']} | Profit: ₹{profit:.2f} | Total Profit: ₹{total_profit:.2f}")
+                    logger.info(f"✅ Trade Successful! {trade['symbol']} ({trade['trade_type']}) | Profit: ₹{profit:.2f} | Total Profit: ₹{total_profit:.2f}")
                     del pending_trades[order_id]
                     continue
 
-                # Trailing logic for sell order (if buy completed and sell pending)
+                # Trailing logic for exit order
                 with price_lock:
                     idx = token_to_index.get(trade["instrument_token"])
                     if idx is not None:
@@ -369,43 +479,60 @@ def manage_orders():
                         if current_ltp == 0.0:
                             continue
 
-                        # Trailing by 0.2% below current LTP, if LTP moved up significantly (0.3% from target)
-                        # Ensure new_sell_price respects tick size
-                        if current_ltp > trade["sell_price_target"] * 1.003: 
-                            new_sell_price = round(current_ltp * 0.998 / 0.05) * 0.05 # Target 0.2% below new LTP
-                            if new_sell_price > trade["sell_price_target"]:
-                                try:
-                                    kite.modify_order(
-                                        variety="regular",
-                                        order_id=trade["sell_order_id"],
-                                        price=new_sell_price
-                                    )
-                                    trade["sell_price_target"] = new_sell_price
-                                    logger.info(f"🔼 Trailing sell order for {trade['symbol']} to ₹{new_sell_price:.2f}")
-                                except Exception as e:
-                                    logger.error(f"⚠️ Error modifying sell order for {trade['symbol']}: {e}")
+                        new_target_price = trade["target_price"] # Initialize with current target
+
+                        if trade["trade_type"] == 'LONG':
+                            # If LTP moved up significantly (e.g., 0.3% from current target), trail stop up
+                            if current_ltp > trade["target_price"] * 1.003: 
+                                new_target_price = round(current_ltp * 0.998 / 0.05) * 0.05 # Target 0.2% below new LTP
+                                if new_target_price > trade["target_price"]: # Only modify if price moves favorably
+                                    try:
+                                        kite.modify_order(
+                                            variety="regular",
+                                            order_id=trade["exit_order_id"],
+                                            price=new_target_price
+                                        )
+                                        trade["target_price"] = new_target_price
+                                        logger.info(f"🔼 Trailing LONG exit order for {trade['symbol']} to ₹{new_target_price:.2f}")
+                                    except Exception as e:
+                                        logger.error(f"⚠️ Error modifying LONG exit order for {trade['symbol']}: {e}")
+                        elif trade["trade_type"] == 'SHORT':
+                            # If LTP moved down significantly (e.g., 0.3% from current target), trail stop down
+                            if current_ltp < trade["target_price"] * 0.997: # Price decreased significantly
+                                new_target_price = round(current_ltp * 1.002 / 0.05) * 0.05 # Target 0.2% above new LTP
+                                if new_target_price < trade["target_price"]: # Only modify if price moves favorably
+                                    try:
+                                        kite.modify_order(
+                                            variety="regular",
+                                            order_id=trade["exit_order_id"],
+                                            price=new_target_price
+                                        )
+                                        trade["target_price"] = new_target_price
+                                        logger.info(f"🔽 Trailing SHORT exit order for {trade['symbol']} to ₹{new_target_price:.2f}")
+                                    except Exception as e:
+                                        logger.error(f"⚠️ Error modifying SHORT exit order for {trade['symbol']}: {e}")
             
             # Timeout logic for pending trades
             if order_age > MAX_ORDER_TIME and not trade["exit_attempted"]:
-                logger.info(f"⏳ Trade Timeout ({MAX_ORDER_TIME}s) for {trade['symbol']}. Initiating exit.")
+                logger.info(f"⏳ Trade Timeout ({MAX_ORDER_TIME}s) for {trade['symbol']} ({trade['trade_type']}). Initiating exit.")
                 trade["exit_attempted"] = True
 
                 # Cancel any pending orders for this trade
-                if not trade["buy_completed"]:
+                if not trade["initial_completed"]:
                     try:
-                        kite.cancel_order(variety="regular", order_id=trade["buy_order_id"])
-                        logger.info(f"Cancelled pending buy order {trade['buy_order_id']} for {trade['symbol']}")
+                        kite.cancel_order(variety="regular", order_id=trade["initial_order_id"])
+                        logger.info(f"Cancelled pending initial {trade['trade_type']} order {trade['initial_order_id']} for {trade['symbol']}")
                     except Exception as e:
-                        logger.warning(f"Could not cancel buy order {trade['buy_order_id']}: {e}")
+                        logger.warning(f"Could not cancel initial {trade['trade_type']} order {trade['initial_order_id']}: {e}")
 
-                if trade["buy_completed"] and not trade["sell_completed"] and trade["sell_order_id"]:
+                if trade["initial_completed"] and not trade["exit_completed"] and trade["exit_order_id"]:
                     try:
-                        kite.cancel_order(variety="regular", order_id=trade["sell_order_id"])
-                        logger.info(f"Cancelled pending sell order {trade['sell_order_id']} for {trade['symbol']}")
+                        kite.cancel_order(variety="regular", order_id=trade["exit_order_id"])
+                        logger.info(f"Cancelled pending exit order {trade['exit_order_id']} for {trade['symbol']}")
                     except Exception as e:
-                        logger.warning(f"Could not cancel sell order {trade['sell_order_id']}: {e}")
+                        logger.warning(f"Could not cancel exit order {trade['exit_order_id']}: {e}")
                     
-                # Force exit any open position (market sell)
+                # Force exit any open position (market order)
                 try:
                     positions_data = kite.positions()
                     if positions_data and 'net' in positions_data:
@@ -416,20 +543,23 @@ def manage_orders():
                                 break
                         
                         if current_position_qty != 0:
-                            transaction_type = kite.TRANSACTION_TYPE_SELL if current_position_qty > 0 else kite.TRANSACTION_TYPE_BUY
-                            logger.warning(f"Forcing market exit for {trade['symbol']} {abs(current_position_qty)} @ MARKET (Timeout exit)")
+                            # Determine transaction type for force exit
+                            # If current_position_qty > 0 (long position), need to SELL
+                            # If current_position_qty < 0 (short position), need to BUY
+                            force_exit_transaction_type = kite.TRANSACTION_TYPE_SELL if current_position_qty > 0 else kite.TRANSACTION_TYPE_BUY
+                            force_exit_product_type = kite.PRODUCT_CNC if trade["trade_type"] == 'LONG' else kite.PRODUCT_MIS # Use original product for forced exit
+
+                            logger.warning(f"Forcing market exit for {trade['symbol']} {abs(current_position_qty)} @ MARKET (Timeout exit, Type: {force_exit_transaction_type})")
                             kite.place_order(
                                 variety=kite.VARIETY_REGULAR,
                                 exchange=kite.EXCHANGE_NSE,
                                 tradingsymbol=trade["symbol"],
-                                transaction_type=transaction_type,
+                                transaction_type=force_exit_transaction_type,
                                 quantity=abs(current_position_qty),
-                                product=kite.PRODUCT_CNC,
+                                product=force_exit_product_type,
                                 order_type=kite.ORDER_TYPE_MARKET,
                                 tag="SCALPER_FORCE_EXIT"
                             )
-                            # Do not delete from pending_trades immediately. Wait for the forced exit to complete.
-                            # It will be handled in the next iteration or during graceful shutdown.
                         else: # No open position found for this symbol, can remove
                             del pending_trades[order_id]
                             logger.info(f"Trade for {trade['symbol']} removed after timeout and exit attempt (no open position).")
@@ -461,8 +591,8 @@ def on_ticks(ws, ticks):
                 # Update price history, ensuring it's for the correct token and with tick data
                 price_history = df.at[idx, 'price_history']
                 price_history.append(price)
-                # Keep only relevant history for oscillation analysis (e.g., 2 times oscillation period)
-                if len(price_history) > OSCILLATION_PERIOD * 2: 
+                # Keep only relevant history for oscillation and trend analysis (e.g., 2 times long EMA period)
+                if len(price_history) > max(OSCILLATION_PERIOD, LONG_EMA_PERIOD) * 2: 
                     price_history.pop(0)
                 df.at[idx, 'price_history'] = price_history
 
@@ -600,7 +730,8 @@ def rotate_symbol_subscription():
                 symbol_name = df.at[idx, 'tradingsymbol']
                 hist_data = get_price_history(symbol_name, token) # Uses minute data here
                 if hist_data:
-                    df.at[idx, 'price_history'] = hist_data[-OSCILLATION_PERIOD*2:]
+                    # Store enough history for EMA and oscillation analysis
+                    df.at[idx, 'price_history'] = hist_data[-max(OSCILLATION_PERIOD, LONG_EMA_PERIOD)*2:]
                     logger.debug(f"Loaded initial minute history for {symbol_name}.")
     
     return new_tokens
@@ -646,71 +777,39 @@ def run_bot():
                         ltp = df.at[idx, 'last_price']
                         
                         # Only consider if we have enough price history and price is within range
-                        if len(price_history) >= OSCILLATION_PERIOD and MIN_PRICE <= ltp <= MAX_PRICE:
+                        if len(price_history) >= max(OSCILLATION_PERIOD, LONG_EMA_PERIOD * 2) and MIN_PRICE <= ltp <= MAX_PRICE:
                             try:
                                 # Check if this symbol is already part of an active trade
                                 if any(trade['symbol'] == symbol for trade in pending_trades.values()):
                                     logger.debug(f"Skipping {symbol}, already in a pending trade.")
                                     continue
+                                
+                                trend = determine_trend(price_history)
+                                is_oscillating = is_volatile_and_oscillating(price_history)
 
-                                if is_volatile_and_oscillating(price_history) and find_entry_point(price_history):
-                                    logger.info(f"💡 Found opportunity in {symbol} (LTP: {ltp})")
-                                    if place_scalp_order(symbol, token, ltp):
-                                        # Order placed, immediately check for another opportunity if MAX_ACTIVE_TRADES allows
-                                        pass
-                                    
+                                if trend == 'positive' and is_oscillating and find_entry_point_long(price_history):
+                                    logger.info(f"💡 Found LONG opportunity in {symbol} (LTP: {ltp}, Trend: {trend})")
+                                    place_trade_order(symbol, token, ltp, 'positive')
+                                elif trend == 'negative' and is_oscillating and find_entry_point_short(price_history):
+                                    logger.info(f"💡 Found SHORT opportunity in {symbol} (LTP: {ltp}, Trend: {trend})")
+                                    place_trade_order(symbol, token, ltp, 'negative')
+                                elif trend == 'neutral' and is_oscillating and find_entry_point_long(price_history): # Default to long for neutral oscillating
+                                     logger.info(f"💡 Found NEUTRAL (LONG) opportunity in {symbol} (LTP: {ltp}, Trend: {trend})")
+                                     place_trade_order(symbol, token, ltp, 'neutral')
+
                             except Exception as e:
                                 logger.error(f"Error evaluating {symbol}: {str(e)}")
             else:
                 logger.info(f"Reached max active trades ({MAX_ACTIVE_TRADES}). Waiting for trades to complete.")
 
             current_active_symbols = ", ".join({trade['symbol'] for trade in pending_trades.values()}) if pending_trades else "None"
-            logger.info(f"Status: Trades {trades_completed} | Profit ₹{total_profit:.2f} | Active Trades: {len(pending_trades)} ({current_active_symbols})")
+            logger.info(f"Active Trades: {current_active_symbols} | Total Profit: ₹{total_profit:.2f} | Trades Completed: {trades_completed}")
             
-            time.sleep(1) # Reduced sleep time to allow faster checks
+            time.sleep(1) # Small delay to prevent excessive looping
 
         except Exception as e:
-            logger.error(f"An unhandled error occurred in main loop: {e}")
-            time.sleep(RECONNECT_DELAY)
+            logger.critical(f"Unhandled exception in main bot loop: {e}", exc_info=True)
+            time.sleep(RECONNECT_DELAY * 2) # Longer delay on critical errors
 
 if __name__ == "__main__":
-    try:
-        logger.info("Starting Scalping Bot")
-        run_bot()
-    except KeyboardInterrupt:
-        logger.info("Shutting down bot. Attempting to close WebSocket and pending positions.")
-        # Attempt to exit all open positions gracefully
-        try:
-            if kws and kws.is_connected():
-                kws.close()
-                logger.info("WebSocket closed.")
-            else:
-                logger.info("WebSocket was not connected, no need to close.")
-        except Exception as e:
-            logger.error(f"Error closing WebSocket: {e}")
-
-        logger.info("Checking for any open positions to exit...")
-        try:
-            positions = kite.positions()
-            if positions and 'net' in positions:
-                for pos in positions["net"]:
-                    if pos["quantity"] != 0:
-                        transaction_type = kite.TRANSACTION_TYPE_SELL if pos["quantity"] > 0 else kite.TRANSACTION_TYPE_BUY
-                        logger.info(f"Exiting open position for {pos['tradingsymbol']} (Qty: {pos['quantity']})")
-                        kite.place_order(
-                            variety=kite.VARIETY_REGULAR,
-                            exchange=kite.EXCHANGE_NSE,
-                            tradingsymbol=pos["tradingsymbol"],
-                            transaction_type=transaction_type,
-                            quantity=abs(pos["quantity"]),
-                            product=kite.PRODUCT_CNC,
-                            order_type=kite.ORDER_TYPE_MARKET,
-                            tag="SHUTDOWN_EXIT"
-                        )
-                        time.sleep(1) # Give a moment for order to process
-            else:
-                logger.info("No open positions found or failed to retrieve positions.")
-        except Exception as e:
-            logger.error(f"Error while exiting positions on shutdown: {e}")
-        
-        logger.info("Bot shutdown complete.")
+    run_bot()
