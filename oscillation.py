@@ -39,7 +39,7 @@ except Exception as e:
     exit()
 
 # Configuration
-CAPITAL = 100000
+CAPITAL = 98500
 TARGET_PROFIT_PER_TRADE = 183
 MAX_ORDER_TIME = 300 # Reduced to 5 minutes (300 seconds) for faster exits
 RISK_PER_TRADE = 0.01 # Keep as percentage of capital
