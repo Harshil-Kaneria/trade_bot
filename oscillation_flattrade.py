@@ -41,86 +41,31 @@ df = df[['Token', 'Symbol']].rename(columns={
 }).reset_index(drop=True)
 
 # Initialize data columns
-df['last_price'] = 0.0
 df['tick_data'] = [[] for _ in range(len(df))]
 df['history_data'] = [[] for _ in range(len(df))]
 token_to_index = {str(token): idx for idx, token in enumerate(df['instrument_token'])}
 tokens = df['instrument_token'].astype(str).tolist()
 price_lock = Lock()
 
-def get_price_history(symbol, instrument_token):
-    """Fetch historical data with Flattrade API"""
-    try:
-        end_date = datetime.now().strftime('%d-%m-%Y %H:%M')
-        start_date = (datetime.now() - timedelta(days=4)).strftime('%d-%m-%Y %H:%M')
-        
-        hist_data = api.get_time_price_series(
-            exchange='NSE',
-            token=str(instrument_token),
-            starttime=start_date,
-            endtime=end_date,
-            interval='1'  # 1 minute interval
-        )
-        
-        formatted_data = []
-        if hist_data and isinstance(hist_data, list):
-            for candle in hist_data:
-                try:
-                    formatted_data.append({
-                        'date': datetime.strptime(candle['time'], '%d-%m-%Y %H:%M:%S'),
-                        'open': float(candle['into']),
-                        'high': float(candle['inth']),
-                        'low': float(candle['intl']),
-                        'close': float(candle['intc']),
-                        'volume': int(candle['v'] if 'v' in candle else 0)
-                    })
-                except (KeyError, ValueError) as e:
-                    logger.warning(f"Invalid candle data for {symbol}: {e}")
-        return formatted_data[-500:] if formatted_data else []
-    except Exception as e:
-        logger.error(f"History fetch failed for {symbol}: {e}")
-        return []
+print(f"df - {df}")
+print(f"token_to_index - {token_to_index}")
+print(f"tokens - {tokens}")
 
-def update_history_data():
-    """Batch update historical data with rate limiting"""
-    batch_size = 3  # Reduced batch size for Flattrade
-    delay = 1  # Increased delay between batches
-    while True:
-        for i in range(0, len(df), batch_size):
-            with price_lock:
-                batch = df.iloc[i:i+batch_size]
-                for _, row in batch.iterrows():
-                    history = get_price_history(row['tradingsymbol'], row['instrument_token'])
-                    if history:
-                        idx = token_to_index[str(row['instrument_token'])]
-                        df.at[idx, 'history_data'] = history
-                    time.sleep(0.5)  # Delay between symbols
-            time.sleep(delay)  # Delay between batches
 
 def on_ticks(tick_data):
     """Process incoming ticks from Flattrade WebSocket"""
-    with price_lock:
-        if isinstance(tick_data, dict):
-            # Single tick
-            token = str(tick_data.get('tk', ''))
-            if token in token_to_index:
-                price = float(tick_data.get('lp', 0.0))
-                idx = token_to_index[token]
-                df.at[idx, 'last_price'] = price
+    try:
+        # Check if it's a tick message
+        if tick_data.get('t') == 'tk':
+            token = tick_data.get('tk')
+            idx = token_to_index[token]
+            if idx is not None:
+                price = float(tick_data.get('lp', 0))
                 df.at[idx, 'tick_data'].append(price)
                 if len(df.at[idx, 'tick_data']) > 1000:
                     df.at[idx, 'tick_data'] = df.at[idx, 'tick_data'][-1000:]
-        elif isinstance(tick_data, list):
-            # Multiple ticks
-            for tick in tick_data:
-                token = str(tick.get('tk', ''))
-                if token in token_to_index:
-                    price = float(tick.get('lp', 0.0))
-                    idx = token_to_index[token]
-                    df.at[idx, 'last_price'] = price
-                    df.at[idx, 'tick_data'].append(price)
-                    if len(df.at[idx, 'tick_data']) > 1000:
-                        df.at[idx, 'tick_data'] = df.at[idx, 'tick_data'][-1000:]
+    except Exception as e:
+        logger.error(f"Error processing tick: {e}")
 
 def on_connect():
     """WebSocket connected callback"""
@@ -141,42 +86,20 @@ def on_error(error):
     """WebSocket error callback"""
     logger.error(f"WebSocket Error: {error}")
 
-# Start historical data thread
-history_thread = Thread(target=update_history_data, daemon=True)
-history_thread.start()
+api.start_websocket(
+    subscribe_callback=on_ticks,
+    socket_open_callback=on_connect,
+    socket_close_callback=on_close,
+    socket_error_callback=on_error
+)
 
+# Main loop to monitor data
 try:
-    # Initialize WebSocket
-    api.start_websocket(
-        subscribe_callback=on_ticks,
-        socket_open_callback=on_connect,
-        socket_close_callback=on_close,
-        socket_error_callback=on_error
-    )
-    
-    # Monitor connection and data
     while True:
-        time.sleep(5)
-        with price_lock:
-            # Get top 5 active symbols
-            active_df = df[df['last_price'] > 0].copy()
-            if not active_df.empty:
-                active_df = active_df.sort_values(by='last_price', ascending=False).head(5)
-                logger.info("\nRecent price updates:")
-                for _, row in active_df.iterrows():
-                    logger.info(f"{row['tradingsymbol']}: {row['last_price']} (Updates: {len(row['tick_data'])})")
-            else:
-                logger.info("Waiting for price updates...")
-            
+        print(f"df {df}")
+        time.sleep(1)
+        
 except KeyboardInterrupt:
-    logger.info("\n🛑 Shutting down...")
-    try:
-        api.unsubscribe([f"NSE|{token}" for token in tokens])
-    except Exception as e:
-        logger.error(f"Unsubscribe error: {e}")
-    history_thread.join(1)
-    logger.info("Clean exit completed")
-except Exception as e:
-    logger.error(f"Fatal error: {e}")
-finally:
-    logger.info("Application terminated")
+    print("\n🛑 Keyboard Interrupt. Closing WebSocket...")
+    unsubscribe_tokens = [f"NSE|{token}" for token in tokens]
+    api.unsubscribe(unsubscribe_tokens)
