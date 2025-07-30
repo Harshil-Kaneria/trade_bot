@@ -1,39 +1,182 @@
 import os
-from dotenv import load_dotenv
-import hashlib
-import requests
+import time
+import pandas as pd
 from api_helper import NorenApiPy
+from dotenv import load_dotenv
+from threading import Lock, Thread
+from datetime import datetime, timedelta
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
-load_dotenv(override=True)
-enctoken = os.getenv("ENCTOKEN")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-userid = os.getenv("FLATTRADE_USER_ID")
+# Load credentials
+load_dotenv(override=True)
 api_key = os.getenv("FLATTRADE_API_KEY")
 api_secret = os.getenv("FLATTRADE_SECRET_KEY")
-request_token = os.getenv("FLATTRADE_CODE")
-usertoken = os.getenv("FLATTRADE_SESSION")
+user_id = os.getenv("FLATTRADE_USER_ID")
+user_token = os.getenv("FLATTRADE_SESSION")
 
-def generate_hash(api_key, request_token, api_secret):
-    return hashlib.sha256(f"{api_key}{request_token}{api_secret}".encode()).hexdigest()
+# Initialize Flattrade API
+api = NorenApiPy()
+ret = api.set_session(userid=user_id, password='', usertoken=user_token)
+if ret is None:
+    logger.error("Failed to set session. Check credentials.")
+    exit()
 
-def get_api_token(payload):
+# Prepare symbol list and instrument info
+symbols_list = pd.read_csv('data_500.csv')['SYMBOL'].tolist()
+instruments = pd.read_csv('NSE_Equity_flattrad.csv')
+
+# Filter instruments - adjust column names as per your CSV
+df = instruments[instruments['Symbol'].isin(symbols_list)]
+df = df[df['Instrument'] == "EQ"]  # Only Equity instruments
+df = df[['Token', 'Symbol']].rename(columns={
+    'Token': 'instrument_token',
+    'Symbol': 'tradingsymbol'
+}).reset_index(drop=True)
+
+# Initialize data columns
+df['last_price'] = 0.0
+df['tick_data'] = [[] for _ in range(len(df))]
+df['history_data'] = [[] for _ in range(len(df))]
+token_to_index = {str(token): idx for idx, token in enumerate(df['instrument_token'])}
+tokens = df['instrument_token'].astype(str).tolist()
+price_lock = Lock()
+
+def get_price_history(symbol, instrument_token):
+    """Fetch historical data with Flattrade API"""
     try:
-        response = requests.post("https://authapi.flattrade.in/trade/apitoken", json=payload)
-        return response.json() if response.status_code == 200 else {"error": f"HTTP {response.status_code}", "details": response.text}
-    except requests.exceptions.RequestException as e:
-        return {"error": "RequestException", "details": str(e)}
+        end_date = datetime.now().strftime('%d-%m-%Y %H:%M')
+        start_date = (datetime.now() - timedelta(days=4)).strftime('%d-%m-%Y %H:%M')
+        
+        hist_data = api.get_time_price_series(
+            exchange='NSE',
+            token=str(instrument_token),
+            starttime=start_date,
+            endtime=end_date,
+            interval='1'  # 1 minute interval
+        )
+        
+        formatted_data = []
+        if hist_data and isinstance(hist_data, list):
+            for candle in hist_data:
+                try:
+                    formatted_data.append({
+                        'date': datetime.strptime(candle['time'], '%d-%m-%Y %H:%M:%S'),
+                        'open': float(candle['into']),
+                        'high': float(candle['inth']),
+                        'low': float(candle['intl']),
+                        'close': float(candle['intc']),
+                        'volume': int(candle['v'] if 'v' in candle else 0)
+                    })
+                except (KeyError, ValueError) as e:
+                    logger.warning(f"Invalid candle data for {symbol}: {e}")
+        return formatted_data[-500:] if formatted_data else []
+    except Exception as e:
+        logger.error(f"History fetch failed for {symbol}: {e}")
+        return []
 
-if usertoken=='':
-    hashed_secret = generate_hash(api_key, request_token, api_secret)
-    output = {"api_key": api_key, "request_code": request_token, "api_secret": hashed_secret}
-    response_data = get_api_token(output)
-    if response_data.get("error") is None:
-        print("response_data",response_data)
-        print("usersession",response_data['token'])
-else:
-    api = NorenApiPy()
-    ret = api.set_session(userid= userid, password = '', usertoken= usertoken)
-    ret = api.get_limits()
-    print(ret)
+def update_history_data():
+    """Batch update historical data with rate limiting"""
+    batch_size = 3  # Reduced batch size for Flattrade
+    delay = 1  # Increased delay between batches
+    while True:
+        for i in range(0, len(df), batch_size):
+            with price_lock:
+                batch = df.iloc[i:i+batch_size]
+                for _, row in batch.iterrows():
+                    history = get_price_history(row['tradingsymbol'], row['instrument_token'])
+                    if history:
+                        idx = token_to_index[str(row['instrument_token'])]
+                        df.at[idx, 'history_data'] = history
+                    time.sleep(0.5)  # Delay between symbols
+            time.sleep(delay)  # Delay between batches
+
+def on_ticks(tick_data):
+    """Process incoming ticks from Flattrade WebSocket"""
+    with price_lock:
+        if isinstance(tick_data, dict):
+            # Single tick
+            token = str(tick_data.get('tk', ''))
+            if token in token_to_index:
+                price = float(tick_data.get('lp', 0.0))
+                idx = token_to_index[token]
+                df.at[idx, 'last_price'] = price
+                df.at[idx, 'tick_data'].append(price)
+                if len(df.at[idx, 'tick_data']) > 1000:
+                    df.at[idx, 'tick_data'] = df.at[idx, 'tick_data'][-1000:]
+        elif isinstance(tick_data, list):
+            # Multiple ticks
+            for tick in tick_data:
+                token = str(tick.get('tk', ''))
+                if token in token_to_index:
+                    price = float(tick.get('lp', 0.0))
+                    idx = token_to_index[token]
+                    df.at[idx, 'last_price'] = price
+                    df.at[idx, 'tick_data'].append(price)
+                    if len(df.at[idx, 'tick_data']) > 1000:
+                        df.at[idx, 'tick_data'] = df.at[idx, 'tick_data'][-1000:]
+
+def on_connect():
+    """WebSocket connected callback"""
+    logger.info("✅ WebSocket Connected")
+    try:
+        # Subscribe with exchange prefix (NSE|token)
+        subscription_tokens = [f"NSE|{token}" for token in tokens]
+        api.subscribe(subscription_tokens)
+        logger.info(f"Subscribed to {len(tokens)} instruments")
+    except Exception as e:
+        logger.error(f"Subscription failed: {e}")
+
+def on_close():
+    """WebSocket closed callback"""
+    logger.info("❌ WebSocket Closed")
+
+def on_error(error):
+    """WebSocket error callback"""
+    logger.error(f"WebSocket Error: {error}")
+
+# Start historical data thread
+history_thread = Thread(target=update_history_data, daemon=True)
+history_thread.start()
+
+try:
+    # Initialize WebSocket
+    api.start_websocket(
+        subscribe_callback=on_ticks,
+        socket_open_callback=on_connect,
+        socket_close_callback=on_close,
+        socket_error_callback=on_error
+    )
+    
+    # Monitor connection and data
+    while True:
+        time.sleep(5)
+        with price_lock:
+            # Get top 5 active symbols
+            active_df = df[df['last_price'] > 0].copy()
+            if not active_df.empty:
+                active_df = active_df.sort_values(by='last_price', ascending=False).head(5)
+                logger.info("\nRecent price updates:")
+                for _, row in active_df.iterrows():
+                    logger.info(f"{row['tradingsymbol']}: {row['last_price']} (Updates: {len(row['tick_data'])})")
+            else:
+                logger.info("Waiting for price updates...")
+            
+except KeyboardInterrupt:
+    logger.info("\n🛑 Shutting down...")
+    try:
+        api.unsubscribe([f"NSE|{token}" for token in tokens])
+    except Exception as e:
+        logger.error(f"Unsubscribe error: {e}")
+    history_thread.join(1)
+    logger.info("Clean exit completed")
+except Exception as e:
+    logger.error(f"Fatal error: {e}")
+finally:
+    logger.info("Application terminated")
