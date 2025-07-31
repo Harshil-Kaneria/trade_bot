@@ -94,6 +94,50 @@ api.start_websocket(
     socket_error_callback=on_error
 )
 
+def get_price_history(symbol, instrument_token):
+    """Fetch historical data with Flattrade API"""
+    try:       
+        lastBusDay = datetime.now() - timedelta(days=4)
+        lastBusDay = lastBusDay.replace(hour=0, minute=0, second=0, microsecond=0)
+        hist_data = api.get_time_price_series(exchange='NSE', token=str(instrument_token), starttime=lastBusDay.timestamp(), interval=1)
+        
+        formatted_data = []
+        if hist_data and isinstance(hist_data, list):
+            for candle in hist_data:
+                try:
+                    formatted_data.append({
+                        'date': datetime.strptime(candle['time'], '%d-%m-%Y %H:%M:%S'),
+                        'open': float(candle['into']),
+                        'high': float(candle['inth']),
+                        'low': float(candle['intl']),
+                        'close': float(candle['intc']),
+                        'volume': int(candle['v'] if 'v' in candle else 0)
+                    })
+                except (KeyError, ValueError) as e:
+                    logger.warning(f"Invalid candle data for {symbol}: {e}")
+        return formatted_data[-500:] if formatted_data else []
+    except Exception as e:
+        logger.error(f"History fetch failed for {symbol}: {e}")
+        return []
+
+def update_history_data():
+    """Batch update historical data with rate limiting"""
+    batch_size = 3  # Reduced batch size for Flattrade
+    delay = 1  # Increased delay between batches
+    while True:
+        for i in range(0, len(df), batch_size):
+            with price_lock:
+                batch = df.iloc[i:i+batch_size]
+                for _, row in batch.iterrows():
+                    history = get_price_history(row['tradingsymbol'], row['instrument_token'])
+                    if history:
+                        idx = token_to_index[str(row['instrument_token'])]
+                        df.at[idx, 'history_data'] = history
+            time.sleep(delay)  # Delay between batches
+
+history_thread = Thread(target=update_history_data, daemon=True)
+history_thread.start()
+
 # Main loop to monitor data
 try:
     while True:
