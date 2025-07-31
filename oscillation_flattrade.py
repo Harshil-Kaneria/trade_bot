@@ -51,16 +51,17 @@ print(f"df - {df}")
 print(f"token_to_index - {token_to_index}")
 print(f"tokens - {tokens}")
 
-
 def on_ticks(tick_data):
     """Process incoming ticks from Flattrade WebSocket"""
     try:
         # Check if it's a tick message
-        if tick_data.get('t') == 'tk':
+        # print(f"tick_data - {tick_data}")
+        if tick_data.get('t') == 'tf' or tick_data.get('t') == 'tk':
             token = tick_data.get('tk')
             idx = token_to_index[token]
-            if idx is not None:
+            if idx is not None and tick_data.get('lp') is not None:
                 price = float(tick_data.get('lp', 0))
+                # print(f"{price}")
                 df.at[idx, 'tick_data'].append(price)
                 if len(df.at[idx, 'tick_data']) > 1000:
                     df.at[idx, 'tick_data'] = df.at[idx, 'tick_data'][-1000:]
