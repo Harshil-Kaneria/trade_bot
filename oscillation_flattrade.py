@@ -47,10 +47,6 @@ token_to_index = {str(token): idx for idx, token in enumerate(df['instrument_tok
 tokens = df['instrument_token'].astype(str).tolist()
 price_lock = Lock()
 
-print(f"df - {df}")
-print(f"token_to_index - {token_to_index}")
-print(f"tokens - {tokens}")
-
 def on_ticks(tick_data):
     """Process incoming ticks from Flattrade WebSocket"""
     try:
@@ -148,3 +144,4 @@ except KeyboardInterrupt:
     print("\n🛑 Keyboard Interrupt. Closing WebSocket...")
     unsubscribe_tokens = [f"NSE|{token}" for token in tokens]
     api.unsubscribe(unsubscribe_tokens)
+    history_thread.join()
