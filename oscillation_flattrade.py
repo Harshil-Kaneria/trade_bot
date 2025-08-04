@@ -20,6 +20,7 @@ api_key = os.getenv("FLATTRADE_API_KEY")
 api_secret = os.getenv("FLATTRADE_SECRET_KEY")
 user_id = os.getenv("FLATTRADE_USER_ID")
 user_token = os.getenv("FLATTRADE_SESSION")
+processing_data = True
 
 # Initialize Flattrade API
 api = NorenApiPy()
@@ -120,7 +121,7 @@ def update_history_data():
     """Batch update historical data with rate limiting"""
     batch_size = 3  # Reduced batch size for Flattrade
     delay = 1  # Increased delay between batches
-    while True:
+    while processing_data:
         for i in range(0, len(df), batch_size):
             with price_lock:
                 batch = df.iloc[i:i+batch_size]
@@ -136,12 +137,12 @@ history_thread.start()
 
 # Main loop to monitor data
 try:
-    while True:
+    while processing_data:
         print(f"df {df}")
         time.sleep(1)
         
 except KeyboardInterrupt:
     print("\n🛑 Keyboard Interrupt. Closing WebSocket...")
+    processing_data = False
     unsubscribe_tokens = [f"NSE|{token}" for token in tokens]
     api.unsubscribe(unsubscribe_tokens)
-    history_thread.join()
