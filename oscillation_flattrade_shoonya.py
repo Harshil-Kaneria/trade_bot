@@ -14,7 +14,7 @@ from queue import Queue  # Added missing import
 import pyotp
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--broker", type=str,default="S", help="Value for broker is (SHOONYA/FLATTRADE) so S/F")
+parser.add_argument("--broker", type=str,default="F", help="Value for broker is (SHOONYA/FLATTRADE) so S/F")
 args = parser.parse_args()
 
 # Configure logging
@@ -83,7 +83,7 @@ reversal_counts = {}  # {token: count of recent reversals)}
 
 # Prepare symbol list and instrument info
 symbols_list = pd.read_csv('data_500.csv')['SYMBOL'].tolist()
-instruments = pd.read_csv('NSE_Equity_flattrad.csv')
+instruments = pd.read_csv('NSE_Equity_Master.csv')
 
 # Filter instruments
 df = instruments[instruments['Symbol'].isin(symbols_list)]
