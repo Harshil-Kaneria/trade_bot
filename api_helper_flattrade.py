@@ -28,18 +28,14 @@ class Order:
 
     #print(ret)
 
-    
-
 
 def get_time(time_string):
     data = time.strptime(time_string,'%d-%m-%Y %H:%M:%S')
 
     return time.mktime(data)
 
-
 class NorenApiPy(NorenApi):
     def __init__(self):
-        # NorenApi.__init__(self, host='https://piconnect.flattrade.in/PiConnectTP/', websocket='wss://piconnect.flattrade.in/PiConnectWSTp/', eodhost='https://web.flattrade.in/chartApi/getdata/')
         NorenApi.__init__(self, host='https://piconnect.flattrade.in/PiConnectTP/', websocket='wss://piconnect.flattrade.in/PiConnectWSTp/')
 
         global api

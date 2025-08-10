@@ -1,7 +1,7 @@
 import os
 import time
 import pandas as pd
-from api_helper import NorenApiPy
+from api_helper_flattrade import NorenApiPy
 from dotenv import load_dotenv
 from threading import Lock, Thread
 from datetime import datetime, timedelta
