@@ -205,15 +205,15 @@ def determine_trade_parameters(opportunity):
     resistance = opportunity['resistance']
     
     # Calculate quantity based on risk per trade
-    risk_per_trade = CAPITAL * 0.001  # 0.1% of capital
+    risk_per_trade = CAPITAL
     stop_loss = support if (price - support) < (resistance - price) else resistance
     risk_per_share = abs(price - stop_loss)
     
     if risk_per_share == 0:
         return None
     
-    quantity = int(risk_per_trade / risk_per_share)
-    quantity = max(1, min(quantity, int((CAPITAL * 0.1) / price)))  # Limit to 10% of capital
+    quantity = 1
+    quantity = max(quantity, int(risk_per_trade / price))
     
     # Determine direction based on position relative to range
     range_mid = (support + resistance) / 2
