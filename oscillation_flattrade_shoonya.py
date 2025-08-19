@@ -79,7 +79,8 @@ SHORT_EMA_PERIOD = 5  # Short EMA for trend detection
 LONG_EMA_PERIOD = 20  # Long EMA for trend detection
 TREND_STRENGTH_THRESHOLD = 0.0005  # Minimum EMA difference for trend
 OSCILLATION_PERIOD = 10  # Short period for scalping
-HISTORY_WINDOW = max(OSCILLATION_PERIOD, LONG_EMA_PERIOD) * 2  # For price history
+HISTORY_WINDOW = max(OSCILLATION_PERIOD, LONG_EMA_PERIOD) * 2  # For price 
+TICK_SIZE = 0.10
 
 # Global trackers
 active_position = False
@@ -382,11 +383,11 @@ def determine_trade_parameters(opportunity):
     if quantity == 0:
         return None
 
-    # Round target to nearest 0.05
+    # Round target to nearest TICK_SIZE
     if direction == 'BUY':
-        target = round(price * 1.002 / 0.05) * 0.05
+        target = round(price * 1.002 / TICK_SIZE) * TICK_SIZE
     else:
-        target = round(price * 0.998 / 0.05) * 0.05
+        target = round(price * 0.998 / TICK_SIZE) * TICK_SIZE
 
     return {
         'symbol': opportunity['symbol'],
@@ -505,9 +506,9 @@ def position_manager():
 
                         # Adjust target if needed
                         if current_trade['direction'] == 'BUY' and current_trade['target'] <= current_trade['entry_price']:
-                            current_trade['target'] = round(current_trade['entry_price'] * 1.002 / 0.05) * 0.05
+                            current_trade['target'] = round(current_trade['entry_price'] * 1.002 / TICK_SIZE) * TICK_SIZE
                         elif current_trade['direction'] == 'SELL' and current_trade['target'] >= current_trade['entry_price']:
-                            current_trade['target'] = round(current_trade['entry_price'] * 0.998 / 0.05) * 0.05
+                            current_trade['target'] = round(current_trade['entry_price'] * 0.998 / TICK_SIZE) * TICK_SIZE
 
                         # Place limit exit order
                         exit_direction = 'SELL' if current_trade['direction'] == 'BUY' else 'BUY'
@@ -551,7 +552,7 @@ def position_manager():
                     new_target = current_trade['target']
                     if current_trade['direction'] == 'BUY':
                         if current_price > current_trade['target'] * 1.003:
-                            new_target = round(current_price * 0.998 / 0.05) * 0.05
+                            new_target = round(current_price * 0.998 / TICK_SIZE) * TICK_SIZE
                             if new_target > current_trade['target']:
                                 try:
                                     api.modify_order(
@@ -565,7 +566,7 @@ def position_manager():
                                     logger.error(f"Error modifying exit order: {e}")
                     else:
                         if current_price < current_trade['target'] * 0.997:
-                            new_target = round(current_price * 1.002 / 0.05) * 0.05
+                            new_target = round(current_price * 1.002 / TICK_SIZE) * TICK_SIZE
                             if new_target < current_trade['target']:
                                 try:
                                     api.modify_order(
