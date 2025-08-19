@@ -47,17 +47,7 @@ if broker == 'F':
         logger.error("Failed to set session. Check credentials.")
         exit()
         
-    uid = os.getenv("SHOONYA_UID")
-    pwd = os.getenv("SHOONYA_PASSWORD")
-    factor2 = pyotp.TOTP(os.getenv("SHOONYA_TOTP")).now()
-    vc = os.getenv("SHOONYA_VENDOR_CODE")
-    app_key = os.getenv("SHOONYA_API_KEY")
-    imei = os.getenv("SHOONYA_IMEI")
-    apiSocket = ShoonyaApiPy()
-    ret = apiSocket.login(userid=uid, password=pwd, twoFA=factor2, vendor_code=vc, api_secret=app_key, imei=imei)
-    if ret is None:
-        apiSocket = api
-    
+    apiSocket = api
     print("FLATTRADE")
 
 else:
@@ -646,7 +636,7 @@ def place_order(symbol, token, direction, quantity, price=0):
             'buy_or_sell': direction[0].upper(),  # 'B' or 'S'
             'product_type': 'I',  # Intraday
             'exchange': 'NSE',
-            'tradingsymbol': symbol,
+            'tradingsymbol': symbol+'-EQ',
             'quantity': str(int(quantity)),
             'discloseqty': '0',
             'price_type': 'MKT' if price == 0 else 'LMT',
