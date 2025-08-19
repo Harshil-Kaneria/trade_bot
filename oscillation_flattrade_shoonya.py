@@ -10,11 +10,12 @@ from dotenv import load_dotenv
 import logging
 from threading import Lock, Thread
 from collections import deque
-from queue import Queue  # Added missing import
+from queue import Queue
 import pyotp
+import json
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--broker", type=str,default="F", help="Value for broker is (SHOONYA/FLATTRADE) so S/F")
+parser.add_argument("--broker", type=str, default="F", help="Value for broker is (SHOONYA/FLATTRADE) so S/F")
 args = parser.parse_args()
 
 # Configure logging
@@ -32,9 +33,10 @@ logger = logging.getLogger(__name__)
 load_dotenv(override=True)
 
 api = None
+apiSocket = None
 broker = args.broker
 
-if(broker=='F'):
+if broker == 'F':
     # Initialize Flattrade API
     api_key = os.getenv("FLATTRADE_API_KEY")
     api_secret = os.getenv("FLATTRADE_SECRET_KEY")
@@ -45,21 +47,26 @@ if(broker=='F'):
     if ret is None:
         logger.error("Failed to set session. Check credentials.")
         exit()
+
+    # For Flattrade, use the same API for socket
+    apiSocket = api
     print("FLATTRADE")
+
 else:
-    uid    = os.getenv("SHOONYA_UID")
-    pwd     = os.getenv("SHOONYA_PASSWORD")
+    # Initialize Shoonya API
+    uid = os.getenv("SHOONYA_UID")
+    pwd = os.getenv("SHOONYA_PASSWORD")
     factor2 = pyotp.TOTP(os.getenv("SHOONYA_TOTP")).now()
-    vc      = os.getenv("SHOONYA_VENDOR_CODE")
+    vc = os.getenv("SHOONYA_VENDOR_CODE")
     app_key = os.getenv("SHOONYA_API_KEY")
-    imei    = os.getenv("SHOONYA_IMEI")
+    imei = os.getenv("SHOONYA_IMEI")
     api = ShoonyaApiPy()
     ret = api.login(userid=uid, password=pwd, twoFA=factor2, vendor_code=vc, api_secret=app_key, imei=imei)
     if ret is None:
         logger.error("Failed to set session. Check credentials.")
         exit()
+    apiSocket = api
     print("SHOONYA")
-
 
 # Trading Configuration
 CAPITAL = 90000  # ₹1,00,000
@@ -104,10 +111,17 @@ tokens = df['instrument_token'].astype(str).tolist()
 def on_ticks(tick_data):
     """Process incoming ticks and update price history"""
     try:
-        if tick_data.get('t') == 'tf' or tick_data.get('t') == 'tk':
-            token = tick_data.get('tk')
-            price = float(tick_data.get('lp', 0))
-            volume = int(tick_data.get('v', 0))
+        if isinstance(tick_data, dict):
+            if broker == 'F':
+                # Flattrade tick format
+                token = tick_data.get('tk')
+                price = float(tick_data.get('lp', 0))
+                volume = int(tick_data.get('v', 0))
+            else:
+                # Shoonya tick format
+                token = tick_data.get('tk')
+                price = float(tick_data.get('lp', 0))
+                volume = int(tick_data.get('v', 0))
             
             if token in price_history:
                 # Detect reversals by comparing with previous price
@@ -129,8 +143,14 @@ def on_connect():
     """WebSocket connected callback"""
     logger.info("✅ WebSocket Connected")
     try:
-        subscription_tokens = [f"NSE|{token}" for token in tokens]
-        api.subscribe(subscription_tokens)
+        if broker == 'F':
+            # Flattrade subscription format
+            subscription_tokens = tokens
+            apiSocket.subscribe(subscription_tokens)
+        else:
+            # Shoonya subscription format
+            subscription_tokens = [f"NSE|{token}" for token in tokens]
+            apiSocket.subscribe(subscription_tokens)
         logger.info(f"Subscribed to {len(tokens)} instruments")
     except Exception as e:
         logger.error(f"Subscription failed: {e}")
@@ -299,9 +319,9 @@ def position_manager():
                     price=current_trade['price']
                 )
                 
-                if order_result and order_result.get('stat') == 'Ok':
-                    current_trade['order_id'] = order_result['norenordno']
-                    current_trade['entry_price'] = float(order_result['avgprc'])
+                if order_result and (order_result.get('stat') == 'Ok' or order_result.get('status') == 'success'):
+                    current_trade['order_id'] = order_result.get('norenordno') or order_result.get('orderid')
+                    current_trade['entry_price'] = float(order_result.get('avgprc', current_trade['price']))
                     entry_time = datetime.now()
                     active_position = True
                     logger.info(f"Trade executed: {current_trade}")
@@ -318,7 +338,9 @@ def position_manager():
                 
                 # Get current price
                 idx = token_to_index.get(current_trade['token'])
-                current_price = df.at[idx, 'last_price'] if idx is not None else None
+                current_price = None
+                if idx is not None and len(price_history.get(current_trade['token'], [])) > 0:
+                    current_price = price_history[current_trade['token']][-1]
                 
                 if current_price is None:
                     time.sleep(1)
@@ -355,9 +377,9 @@ def position_manager():
                         price=0  # Market order
                     )
                     
-                    if exit_result and exit_result.get('stat') == 'Ok':
+                    if exit_result and (exit_result.get('stat') == 'Ok' or exit_result.get('status') == 'success'):
                         # Calculate P&L
-                        exit_price = float(exit_result['avgprc'])
+                        exit_price = float(exit_result.get('avgprc', current_price))
                         if current_trade['direction'] == 'BUY':
                             pnl = (exit_price - current_trade['entry_price']) * current_trade['quantity']
                         else:
@@ -379,34 +401,67 @@ def position_manager():
             time.sleep(5)
 
 def place_order(symbol, token, direction, quantity, price=0):
-    """Place order using Flattrade API with correct parameters"""
+    """Place order using Flattrade/Shoonya API with correct parameters"""
     try:
         # Convert numpy float to native Python float if needed
         if hasattr(price, 'item'):  # Check if it's numpy type
             price = price.item()
         
-        # Prepare order parameters according to Flattrade API
-        order_params = {
-            'buy_or_sell': 'B' if direction == 'BUY' else 'S',
-            'product_type': 'I',  # Margin Intraday Square-off
-            'exchange': 'NSE',
-            'tradingsymbol': symbol,
-            'quantity': str(int(quantity)),  # Ensure quantity is integer string
-            'price': str(float(price)) if price > 0 else '0',  # Price as string
-            'trigger_price': '0',  # No trigger price for regular orders
-            'discloseqty': '0',  # No disclosed quantity
-            'ordertype': 'L' if price > 0 else 'MKT',  # LIMIT or MARKET
-            'retention': 'DAY',  # Order valid for the day
-            'remarks': 'OSC_SCALPER'  # Order tag
-        }
-        
-        logger.debug(f"Placing order with params: {order_params}")
-        response = api.place_order(order_params)
-        
-        if response and isinstance(response, dict) and response.get('stat') == 'Ok':
-            return response
+        # Prepare order parameters according to API
+        if broker == 'F':
+            # Flattrade order parameters
+            order_params = {
+                'buy_or_sell': 1 if direction == 'BUY' else -1,  # 1 for Buy, -1 for Sell
+                'product_type': 'I',  # Intraday
+                'exchange': 'NSE',
+                'tradingsymbol': symbol,
+                'quantity': str(int(quantity)),
+                'price': str(round(float(price), 2)) if price > 0 else '0',
+                'trigger_price': '0',
+                'disclosure': '0',
+                'discqty': '0',
+                'order_type': 'LMT' if price > 0 else 'MKT',
+                'retention': 'DAY',
+                'remarks': 'OSC_SCALPER'
+            }
+            
+            # Place order
+            response = api.place_order(**order_params)
+            
         else:
-            logger.error(f"Order placement failed. Response: {response}")
+            # Shoonya order parameters
+            order_params = {
+                'buy_or_sell': direction[0].upper(),  # 'B' or 'S'
+                'product_type': 'I',  # Intraday
+                'exchange': 'NSE',
+                'tradingsymbol': symbol,
+                'quantity': str(int(quantity)),
+                'price': str(round(float(price), 2)) if price > 0 else '0',
+                'trigger_price': '0',
+                'disclosure': '0',
+                'order_type': 'LMT' if price > 0 else 'MKT',
+                'price_type': 'LMT' if price > 0 else 'MKT',
+                'retention': 'DAY',
+                'remarks': 'OSC_SCALPER'
+            }
+            
+            # Place order
+            response = api.place_order(**order_params)
+        
+        if response is None:
+            logger.error("Order placement failed with None response. Check API connection.")
+            return None
+            
+        logger.debug(f"Order response: {response}")
+        
+        if isinstance(response, dict):
+            if response.get('stat') == 'Ok' or response.get('status') == 'success':
+                return response
+            else:
+                logger.error(f"Order placement failed. Response: {response}")
+                return None
+        else:
+            logger.error(f"Unexpected response format: {response}")
             return None
             
     except Exception as e:
@@ -417,13 +472,25 @@ def main():
     """Main function to start all components"""
     try:
         global processing_data
+        
         # Start WebSocket
-        api.start_websocket(
-            subscribe_callback=on_ticks,
-            socket_open_callback=on_connect,
-            socket_close_callback=on_close,
-            socket_error_callback=on_error
-        )
+        if broker == 'F':
+            # Flattrade WebSocket
+            apiSocket.start_websocket(
+                subscribe_callback=on_ticks,
+                socket_open_callback=on_connect,
+                socket_close_callback=on_close,
+                socket_error_callback=on_error
+            )
+        else:
+            # Shoonya WebSocket
+            apiSocket.start_websocket(
+                order_update_callback=None,
+                subscribe_callback=on_ticks,
+                socket_open_callback=on_connect,
+                socket_close_callback=on_close,
+                socket_error_callback=on_error
+            )
         
         # Start stock picker thread
         picker_thread = Thread(target=stock_picker, daemon=True)
@@ -440,8 +507,11 @@ def main():
     except KeyboardInterrupt:
         logger.info("\n🛑 Keyboard Interrupt. Shutting down...")
         processing_data = False
-        unsubscribe_tokens = [f"NSE|{token}" for token in tokens]
-        api.unsubscribe(unsubscribe_tokens)
+        if broker == 'F':
+            unsubscribe_tokens = tokens
+        else:
+            unsubscribe_tokens = [f"NSE|{token}" for token in tokens]
+        apiSocket.unsubscribe(unsubscribe_tokens)
         time.sleep(1)
         exit()
 
