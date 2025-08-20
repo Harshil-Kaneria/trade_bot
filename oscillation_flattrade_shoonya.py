@@ -69,7 +69,9 @@ else:
 # Trading Configuration (adapted from Zerodha with Shoonya values where applicable)
 CAPITAL = 90000  # ₹90,000
 TARGET_PROFIT_PER_TRADE = 180  # ₹180 per trade
+MAX_LOSS_PER_TRADE = 150
 MAX_POSITION_DURATION = 300  # 5 minutes in seconds
+AUTO_CLOSE_ENABLED = True
 VOLATILITY_THRESHOLD = 0.0005  # 0.05% for small price movements
 MAX_CONCURRENT_SUBS = 500  # Assuming higher limit for Shoonya/Flattrade; adjust if needed
 MIN_PRICE = 100  # Minimum stock price
@@ -120,6 +122,35 @@ def get_price_history(token, minutes=30):
     except Exception as e:
         logger.error(f"Error fetching historical minute data for token {token}: {e}")
     return []
+
+def get_todays_high_low(token):
+    """Return today's high/low via broker quote API (Shoonya/Flattrade compatible).
+    Tries common key variations and optional nested 'data'.
+    """
+    try:
+        quote = api.get_quotes(exchange='NSE', token=str(token))
+        if not quote:
+            return None, None
+        # Sometimes wrapped in {'stat': 'Ok', 'data': {...}}
+        if isinstance(quote, dict) and quote.get('data') and isinstance(quote.get('data'), dict):
+            quote = quote.get('data')
+        # Accept multiple possible key names
+        high_keys = ['h', 'high', 'day_high', 'dayHigh', 'ih']
+        low_keys = ['l', 'low', 'day_low', 'dayLow', 'il']
+        day_high = None
+        day_low = None
+        for k in high_keys:
+            if k in quote and quote.get(k) not in (None, ''):
+                day_high = float(quote.get(k))
+                break
+        for k in low_keys:
+            if k in quote and quote.get(k) not in (None, ''):
+                day_low = float(quote.get(k))
+                break
+        return day_high, day_low
+    except Exception as e:
+        logger.warning(f"Failed to fetch quote high/low for token {token}: {e}")
+        return None, None
 
 def calculate_ema(prices, period):
     """Calculates Exponential Moving Average."""
@@ -389,6 +420,16 @@ def determine_trade_parameters(opportunity):
     else:
         target = round(price * 0.998 / TICK_SIZE) * TICK_SIZE
 
+    # Validate target against today's high/low to avoid unrealistic fills
+    day_high, day_low = get_todays_high_low(opportunity['token'])
+    if day_high is not None and day_low is not None:
+        if direction == 'BUY' and target > day_high:
+            logger.info(f"Skipping {opportunity['symbol']} - target {target:.2f} > today's high {day_high:.2f}")
+            return None
+        if direction == 'SELL' and target < day_low:
+            logger.info(f"Skipping {opportunity['symbol']} - target {target:.2f} < today's low {day_low:.2f}")
+            return None
+
     return {
         'symbol': opportunity['symbol'],
         'token': opportunity['token'],
@@ -470,6 +511,8 @@ def position_manager():
                     current_trade['exit_order_id'] = None
                     current_trade['initial_completed'] = False
                     current_trade['exit_completed'] = False
+                    current_trade['stop_order_id'] = None
+                    current_trade['stop_completed'] = False
                     current_trade['exit_attempted'] = False
                     entry_time = datetime.now()
                     active_position = True
@@ -510,7 +553,7 @@ def position_manager():
                         elif current_trade['direction'] == 'SELL' and current_trade['target'] >= current_trade['entry_price']:
                             current_trade['target'] = round(current_trade['entry_price'] * 0.998 / TICK_SIZE) * TICK_SIZE
 
-                        # Place limit exit order
+                        # Place limit exit order (target)
                         exit_direction = 'SELL' if current_trade['direction'] == 'BUY' else 'BUY'
                         exit_result = place_order(
                             symbol=current_trade['symbol'],
@@ -526,12 +569,50 @@ def position_manager():
                         else:
                             logger.error(f"Exit order failed: {exit_result}")
 
-                if current_trade['initial_completed'] and not current_trade['exit_completed'] and current_trade['exit_order_id']:
-                    exit_order_status = get_order_details(current_trade['exit_order_id'])
+                        # Place protective stop-loss order as bracket (max loss per trade in rupees)
+                        try:
+                            # Ensure total risk in rupees equals MAX_LOSS_PER_TRADE across the whole position
+                            qty_int = max(1, int(current_trade['quantity']))
+                            risk_per_share = float(MAX_LOSS_PER_TRADE) / qty_int
+                            if risk_per_share <= 0:
+                                risk_per_share = round(float(current_trade['entry_price']) * 0.002, 2)
+                            if current_trade['direction'] == 'BUY':
+                                stop_trigger = max(0.0, current_trade['entry_price'] - risk_per_share)
+                            else:
+                                stop_trigger = current_trade['entry_price'] + risk_per_share
+                            # Align to tick size
+                            stop_trigger = round(round(stop_trigger / TICK_SIZE) * TICK_SIZE, 2)
+                            stop_limit = stop_trigger
+                            stop_result = place_order(
+                                symbol=current_trade['symbol'],
+                                token=current_trade['token'],
+                                direction=exit_direction,
+                                quantity=current_trade['quantity'],
+                                price=stop_limit,
+                                price_type='SL-LMT',
+                                trigger_price=stop_trigger
+                            )
+                            if stop_result and stop_result.get('stat') == 'Ok':
+                                current_trade['stop_order_id'] = stop_result.get('norenordno')
+                                logger.info(f"Placed Stop-Loss for {current_trade['symbol']}: {current_trade['stop_order_id']} @ ₹{stop_trigger:.2f}")
+                            else:
+                                logger.warning(f"Stop-loss placement failed for {current_trade['symbol']}: {stop_result}")
+                        except Exception as e:
+                            logger.warning(f"Error placing stop-loss order: {e}")
+
+                if current_trade['initial_completed'] and (not current_trade['exit_completed'] or not current_trade['stop_completed']):
+                    exit_order_status = get_order_details(current_trade['exit_order_id']) if current_trade.get('exit_order_id') else None
+                    stop_order_status = get_order_details(current_trade['stop_order_id']) if current_trade.get('stop_order_id') else None
                     
                     if exit_order_status and exit_order_status.get('status') == 'COMPLETE':
                         current_trade['exit_completed'] = True
                         executed_exit_price = float(exit_order_status.get('avgprc', current_price))
+                        # Cancel stop if still pending
+                        if current_trade.get('stop_order_id'):
+                            try:
+                                api.cancel_order(orderno=current_trade['stop_order_id'])
+                            except Exception:
+                                pass
                         
                         pnl = 0
                         if current_trade['direction'] == 'BUY':
@@ -542,6 +623,27 @@ def position_manager():
                         logger.info(f"Position closed. P&L: ₹{pnl:.2f}")
                         
                         # Reset position
+                        del pending_trades[order_id]
+                        current_trade = None
+                        active_position = False
+                        entry_time = None
+                        continue
+
+                    if stop_order_status and stop_order_status.get('status') == 'COMPLETE':
+                        current_trade['stop_completed'] = True
+                        executed_stop_price = float(stop_order_status.get('avgprc', current_price))
+                        pnl = 0
+                        if current_trade['direction'] == 'BUY':
+                            pnl = (executed_stop_price - current_trade['entry_price']) * current_trade['quantity']
+                        else:
+                            pnl = (current_trade['entry_price'] - executed_stop_price) * current_trade['quantity']
+                        logger.info(f"Stop-loss hit. Position closed. P&L: ₹{pnl:.2f}")
+                        # Cancel target if still pending
+                        if current_trade.get('exit_order_id'):
+                            try:
+                                api.cancel_order(orderno=current_trade['exit_order_id'])
+                            except Exception:
+                                pass
                         del pending_trades[order_id]
                         current_trade = None
                         active_position = False
@@ -579,8 +681,8 @@ def position_manager():
                                 except Exception as e:
                                     logger.error(f"Error modifying exit order: {e}")
 
-                # Check timeout
-                if position_duration > MAX_POSITION_DURATION and not current_trade['exit_attempted']:
+                # Check timeout (only if auto-close is enabled)
+                if AUTO_CLOSE_ENABLED and position_duration > MAX_POSITION_DURATION and not current_trade['exit_attempted']:
                     logger.info(f"⏳ Trade Timeout for {current_trade['symbol']}. Initiating exit.")
                     current_trade['exit_attempted'] = True
 
@@ -597,14 +699,42 @@ def position_manager():
                             logger.info(f"Cancelled pending exit order {current_trade['exit_order_id']}")
                         except Exception as e:
                             logger.warning(f"Could not cancel exit order: {e}")
+                    if current_trade['initial_completed'] and current_trade.get('stop_order_id'):
+                        try:
+                            api.cancel_order(orderno=current_trade['stop_order_id'])
+                            logger.info(f"Cancelled pending stop-loss order {current_trade['stop_order_id']}")
+                        except Exception as e:
+                            logger.warning(f"Could not cancel stop-loss order: {e}")
                     
                     # Force market exit if position open
-                    positions = api.get_positions()
+                    positions_data = None
                     current_position_qty = 0
-                    for pos in positions.get('net', []):
-                        if pos.get('tsym') == current_trade['symbol'] and int(pos.get('netqty', 0)) != 0:
-                            current_position_qty = int(pos['netqty'])
-                            break
+                    try:
+                        positions_data = api.get_positions()
+                    except Exception as e:
+                        logger.warning(f"Could not fetch positions for timeout exit: {e}")
+
+                    iterable_positions = []
+                    if isinstance(positions_data, list):
+                        iterable_positions = positions_data
+                    elif isinstance(positions_data, dict):
+                        # Shoonya/Flattrade often return {'stat': 'Ok', 'data': [...]} or similar
+                        if positions_data.get('data') is not None:
+                            iterable_positions = positions_data.get('data', [])
+                        elif positions_data.get('net') is not None:
+                            iterable_positions = positions_data.get('net', [])
+
+                    for pos in iterable_positions:
+                        try:
+                            tsym = pos.get('tsym') or pos.get('tradingsymbol') or pos.get('symbol')
+                            base_symbol = tsym.split('-')[0] if tsym else None
+                            qty_raw = pos.get('netqty', pos.get('qty', 0))
+                            qty_val = int(qty_raw) if str(qty_raw).strip() != '' else 0
+                            if base_symbol == current_trade['symbol'] and qty_val != 0:
+                                current_position_qty = qty_val
+                                break
+                        except Exception:
+                            continue
                     
                     if current_position_qty != 0:
                         force_exit_direction = 'SELL' if current_position_qty > 0 else 'BUY'
@@ -629,7 +759,7 @@ def position_manager():
             logger.error(f"Error in position manager: {e}")
             time.sleep(5)
 
-def place_order(symbol, token, direction, quantity, price=0):
+def place_order(symbol, token, direction, quantity, price=0, price_type=None, trigger_price=0):
     """Place order using Flattrade/Shoonya API with correct parameters"""
     try:
         # Prepare order parameters according to API
@@ -640,9 +770,9 @@ def place_order(symbol, token, direction, quantity, price=0):
             'tradingsymbol': symbol+'-EQ',
             'quantity': str(int(quantity)),
             'discloseqty': '0',
-            'price_type': 'MKT' if price == 0 else 'LMT',
+            'price_type': (price_type if price_type else ('MKT' if price == 0 else 'LMT')),
             'price': '0' if price == 0 else str(round(float(price), 2)),
-            'trigger_price': '0',
+            'trigger_price': '0' if not trigger_price else str(round(float(trigger_price), 2)),
             'retention': 'DAY',
             'remarks': 'OSC_SCALPER'
         }
