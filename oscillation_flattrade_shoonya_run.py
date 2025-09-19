@@ -15,6 +15,8 @@ import pyotp
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--broker", type=str, default="F", help="Value for broker is (SHOONYA/FLATTRADE) so S/F")
+parser.add_argument("--debug", action="store_true", help="Enable debug mode for detailed stock analysis")
+parser.add_argument("--summary", action="store_true", help="Show oscillation market summary and exit")
 args = parser.parse_args()
 
 # Configure logging
@@ -67,12 +69,12 @@ else:
     print("SHOONYA")
 
 # Trading Configuration (adapted from Zerodha with Shoonya values where applicable)
-CAPITAL = 90000  # ₹90,000
+CAPITAL = 80000  # ₹80,000
 TARGET_PROFIT_PER_TRADE = 180  # ₹180 per trade
 MAX_LOSS_PER_TRADE = 150
 MAX_POSITION_DURATION = 300  # 5 minutes in seconds
 AUTO_CLOSE_ENABLED = True
-VOLATILITY_THRESHOLD = 0.0005  # 0.05% for small price movements
+VOLATILITY_THRESHOLD = 0.0005  # Match Kite version for better opportunities
 MAX_CONCURRENT_SUBS = 500  # Assuming higher limit for Shoonya/Flattrade; adjust if needed
 MIN_PRICE = 100  # Minimum stock price
 MAX_PRICE = 3000  # Maximum stock price
@@ -80,9 +82,22 @@ MAX_ACTIVE_TRADES = 1  # Limit concurrent trades
 SHORT_EMA_PERIOD = 5  # Short EMA for trend detection
 LONG_EMA_PERIOD = 20  # Long EMA for trend detection
 TREND_STRENGTH_THRESHOLD = 0.0005  # Minimum EMA difference for trend
-OSCILLATION_PERIOD = 10  # Short period for scalping
-HISTORY_WINDOW = max(OSCILLATION_PERIOD, LONG_EMA_PERIOD) * 2  # For price 
+OSCILLATION_PERIOD = 10  # Match Kite version for faster detection
+HISTORY_WINDOW = max(OSCILLATION_PERIOD, LONG_EMA_PERIOD) * 2  # Match Kite version
 TICK_SIZE = 0.10
+
+# Enhanced oscillation parameters
+MIN_OSCILLATION_SCORE = 0.0  # Remove minimum score restriction to match Kite version
+MAX_REPEAT_PICKS = 3  # Maximum times same stock can be picked in a session
+MIN_VOLUME_THRESHOLD = 100000  # Minimum volume for liquidity
+PRICE_CHANGE_THRESHOLD = 0.0005  # 0.05% min change for micro oscillation
+MAX_TREND_STRENGTH = 0.004  # Tighter to avoid trending stocks
+
+# Price movement tracking parameters
+MIN_OSCILLATION_CYCLES = 1  # Allow a single recent cycle for faster entries
+MIN_CYCLE_DURATION = 45  # ~45s between swings for semi-HFT
+PRICE_MOVEMENT_THRESHOLD = 0.001  # 0.1% min movement per cycle
+MAX_CYCLES_TO_TRACK = 10  # Maximum cycles to track per stock
 
 # Global trackers
 active_position = False
@@ -91,6 +106,12 @@ processing_data = True
 trade_signal_queue = Queue()
 price_history = {}  # {token: deque of prices}
 pending_trades = {}  # Track pending trades like in Zerodha
+recently_picked_stocks = {}  # Track recently picked stocks to avoid repetition
+session_start_time = datetime.now()
+
+# Enhanced price movement tracking
+price_movements = {}  # {token: {'cycles': [], 'last_cycle_time': timestamp, 'current_direction': 'up/down'}}
+target_hit_history = {}  # {token: {'last_target_hit': timestamp, 'target_price': float, 'hit_count': int}}
 
 # Prepare symbol list and instrument info
 symbols_list = pd.read_csv('data_500.csv')['SYMBOL'].tolist()
@@ -185,7 +206,7 @@ def determine_trend(prices):
     return 'neutral'
 
 def calculate_oscillation_score(prices):
-    """Calculates an oscillation score based on price range and ROC sign changes."""
+    """Enhanced oscillation score calculation with multiple factors."""
     if len(prices) < OSCILLATION_PERIOD:
         return 0.0
     
@@ -194,130 +215,292 @@ def calculate_oscillation_score(prices):
     if avg_price == 0:
         return 0.0
     
-    # Price range score (normalized percentage range)
+    # 1. Price Range Score (25% weight)
     price_range = np.max(recent_prices) - np.min(recent_prices)
-    range_score = price_range / avg_price
+    range_score = min(1.0, price_range / avg_price / 0.01)  # Normalize to 1% range
     
-    # Standard deviation filter
-    std_dev = np.std(recent_prices)
-    if std_dev / avg_price > 0.01:  # Avoid trending stocks
-        return 0.0
+    # 2. Volatility Consistency Score (20% weight)
+    # Calculate rolling volatility and check consistency
+    volatility_windows = []
+    for i in range(5, len(recent_prices), 5):
+        window_prices = recent_prices[max(0, i-5):i]
+        if len(window_prices) >= 3:
+            vol = np.std(window_prices) / np.mean(window_prices)
+            volatility_windows.append(vol)
     
-    # ROC sign changes
-    roc = [(recent_prices[i] - recent_prices[i-1]) / recent_prices[i-1] for i in range(1, len(recent_prices))]
-    sign_changes = 0
-    for i in range(1, len(roc)):
-        if roc[i] * roc[i-1] < 0:
-            sign_changes += 1
-    roc_score = sign_changes / (OSCILLATION_PERIOD - 1)  # Normalize by max possible changes
+    if volatility_windows:
+        vol_consistency = 1.0 - np.std(volatility_windows) / np.mean(volatility_windows)
+        vol_consistency = max(0.0, min(1.0, vol_consistency))
+    else:
+        vol_consistency = 0.0
     
-    # Combined score (60% range, 40% ROC changes)
-    return 0.6 * range_score + 0.4 * roc_score
+    # 3. Direction Change Score (25% weight)
+    # Count significant direction changes
+    direction_changes = 0
+    min_change = avg_price * PRICE_CHANGE_THRESHOLD
+    
+    for i in range(2, len(recent_prices)):
+        change1 = recent_prices[i-1] - recent_prices[i-2]
+        change2 = recent_prices[i] - recent_prices[i-1]
+        
+        if abs(change1) > min_change and abs(change2) > min_change:
+            if (change1 > 0 and change2 < 0) or (change1 < 0 and change2 > 0):
+                direction_changes += 1
+    
+    direction_score = min(1.0, direction_changes / (OSCILLATION_PERIOD // 3))
+    
+    # 4. Mean Reversion Score (20% weight)
+    # Check if prices tend to revert to mean
+    deviations = recent_prices - avg_price
+    mean_reversion_score = 0.0
+    
+    if len(deviations) >= 3:
+        # Calculate correlation between current deviation and next price change
+        correlations = []
+        for i in range(1, len(deviations)-1):
+            if abs(deviations[i]) > min_change:
+                # Check if next price change is opposite to current deviation
+                next_change = recent_prices[i+1] - recent_prices[i]
+                if (deviations[i] > 0 and next_change < 0) or (deviations[i] < 0 and next_change > 0):
+                    correlations.append(1.0)
+                else:
+                    correlations.append(0.0)
+        
+        if correlations:
+            mean_reversion_score = np.mean(correlations)
+    
+    # 5. Trend Avoidance Score (10% weight)
+    # Penalize strong trends
+    trend_strength = abs(recent_prices[-1] - recent_prices[0]) / avg_price
+    trend_penalty = max(0.0, 1.0 - (trend_strength / MAX_TREND_STRENGTH))
+    
+    # Combined weighted score
+    final_score = (
+        0.25 * range_score +
+        0.20 * vol_consistency +
+        0.25 * direction_score +
+        0.20 * mean_reversion_score +
+        0.10 * trend_penalty
+    )
+    
+    return min(1.0, final_score)
 
 def is_volatile_and_oscillating(prices):
+    """Enhanced volatility and oscillation detection."""
     if len(prices) < OSCILLATION_PERIOD:
         return False
     
     recent_prices = np.array(prices[-OSCILLATION_PERIOD:])
-    
-    # Check volatility (price range >= 0.05% of average price)
-    price_range = np.max(recent_prices) - np.min(recent_prices)
     avg_price = np.mean(recent_prices)
+    
     if avg_price == 0:
         return False
     
+    # 1. Minimum volatility check
+    price_range = np.max(recent_prices) - np.min(recent_prices)
     if price_range / avg_price < VOLATILITY_THRESHOLD:
         return False
     
-    # Check standard deviation to avoid strong trends
-    std_dev = np.std(recent_prices)
-    if std_dev / avg_price > 0.01:
+    # 2. Maximum volatility check (avoid extreme volatility)
+    if price_range / avg_price > 0.05:  # 5% max range
         return False
     
-    # Check momentum with Rate of Change (ROC)
-    roc = [(recent_prices[i] - recent_prices[i-1]) / recent_prices[i-1] for i in range(1, len(recent_prices))]
-    if len(roc) < 2:
+    # 3. Trend strength check
+    trend_strength = abs(recent_prices[-1] - recent_prices[0]) / avg_price
+    if trend_strength > MAX_TREND_STRENGTH:
         return False
     
-    # Look for at least one sign change for oscillation
-    sign_changes = 0
-    for i in range(1, len(roc)):
-        if roc[i] * roc[i-1] < 0:
-            sign_changes += 1
-    if sign_changes < 1:
+    # 4. Direction change requirement
+    min_change = avg_price * PRICE_CHANGE_THRESHOLD
+    direction_changes = 0
+    
+    for i in range(2, len(recent_prices)):
+        change1 = recent_prices[i-1] - recent_prices[i-2]
+        change2 = recent_prices[i] - recent_prices[i-1]
+        
+        if abs(change1) > min_change and abs(change2) > min_change:
+            if (change1 > 0 and change2 < 0) or (change1 < 0 and change2 > 0):
+                direction_changes += 1
+    
+    if direction_changes < 2:  # Require at least 2 direction changes
+        return False
+    
+    # 5. Price distribution check (avoid skewed distributions)
+    price_std = np.std(recent_prices)
+    if price_std / avg_price < 0.001:  # Too stable
         return False
     
     return True
 
 def find_entry_point_long(prices):
+    """Enhanced long entry point detection."""
     if len(prices) < OSCILLATION_PERIOD:
         return False
     
     current_price = prices[-1]
-    sma_short = np.mean(prices[-5:])
-    sma_long = np.mean(prices[-OSCILLATION_PERIOD:])
+    recent_prices = prices[-OSCILLATION_PERIOD:]
     
-    if current_price >= sma_short:
-        return False
-        
-    if sma_short > sma_long * 1.001:
-        return False
-        
-    recent_min = np.min(prices[-OSCILLATION_PERIOD:])
-    recent_max = np.max(prices[-OSCILLATION_PERIOD:])
+    # 1. Price position relative to recent range
+    recent_min = np.min(recent_prices)
+    recent_max = np.max(recent_prices)
+    price_range = recent_max - recent_min
     
-    if recent_max == recent_min:
+    if price_range == 0:
         return False
-
-    if current_price > (recent_min + (recent_max - recent_min) * 0.4):
+    
+    # Current price should be in lower 40% of range
+    price_position = (current_price - recent_min) / price_range
+    if price_position > 0.4:
         return False
-
-    if len(prices) >= 3 and current_price < prices[-2]:
-        return True
-
-    return False
+    
+    # 2. Recent price decline check
+    if len(prices) >= 5:
+        recent_trend = np.mean(prices[-3:]) - np.mean(prices[-6:-3])
+        if recent_trend > 0:  # Still trending up
+            return False
+    
+    # 3. Volume confirmation (if available)
+    # This would require volume data integration
+    
+    # 4. RSI-like oversold condition
+    if len(prices) >= 14:
+        gains = [max(0, prices[i] - prices[i-1]) for i in range(1, len(prices))]
+        losses = [max(0, prices[i-1] - prices[i]) for i in range(1, len(prices))]
+        
+        if len(gains) >= 14 and len(losses) >= 14:
+            avg_gain = np.mean(gains[-14:])
+            avg_loss = np.mean(losses[-14:])
+            
+            if avg_loss > 0:
+                rs = avg_gain / avg_loss
+                rsi = 100 - (100 / (1 + rs))
+                
+                if rsi > 30:  # Not oversold enough
+                    return False
+    
+    # 5. Confirmation: price should be below short-term moving average
+    if len(prices) >= 5:
+        short_ma = np.mean(prices[-5:])
+        if current_price >= short_ma:
+            return False
+    
+    return True
 
 def find_entry_point_short(prices):
+    """Enhanced short entry point detection."""
     if len(prices) < OSCILLATION_PERIOD:
         return False
     
     current_price = prices[-1]
-    sma_long = np.mean(prices[-OSCILLATION_PERIOD:])
+    recent_prices = prices[-OSCILLATION_PERIOD:]
     
-    if sma_long == 0:
-        return False
-        
-    sma_short = np.mean(prices[-5:])
-    if sma_short < sma_long * 0.999:
-        return False
-        
-    recent_min = np.min(prices[-OSCILLATION_PERIOD:])
-    recent_max = np.max(prices[-OSCILLATION_PERIOD:])
+    # 1. Price position relative to recent range
+    recent_min = np.min(recent_prices)
+    recent_max = np.max(recent_prices)
+    price_range = recent_max - recent_min
     
-    if recent_max == recent_min:
+    if price_range == 0:
         return False
-
-    if current_price < (recent_max - (recent_max - recent_min) * 0.4):
+    
+    # Current price should be in upper 40% of range
+    price_position = (recent_max - current_price) / price_range
+    if price_position > 0.4:
         return False
+    
+    # 2. Recent price rise check
+    if len(prices) >= 5:
+        recent_trend = np.mean(prices[-3:]) - np.mean(prices[-6:-3])
+        if recent_trend < 0:  # Still trending down
+            return False
+    
+    # 3. RSI-like overbought condition
+    if len(prices) >= 14:
+        gains = [max(0, prices[i] - prices[i-1]) for i in range(1, len(prices))]
+        losses = [max(0, prices[i-1] - prices[i]) for i in range(1, len(prices))]
+        
+        if len(gains) >= 14 and len(losses) >= 14:
+            avg_gain = np.mean(gains[-14:])
+            avg_loss = np.mean(losses[-14:])
+            
+            if avg_loss > 0:
+                rs = avg_gain / avg_loss
+                rsi = 100 - (100 / (1 + rs))
+                
+                if rsi < 70:  # Not overbought enough
+                    return False
+    
+    # 4. Confirmation: price should be above short-term moving average
+    if len(prices) >= 5:
+        short_ma = np.mean(prices[-5:])
+        if current_price <= short_ma:
+            return False
+    
+    return True
 
-    if len(prices) >= 3 and current_price < prices[-2]:
-        return True
+def is_stock_eligible_for_pick(symbol, token, current_price):
+    """Simplified eligibility check to match Kite version performance."""
+    # 1. Price range (basic check only)
+    if not (MIN_PRICE <= current_price <= MAX_PRICE):
+        return False
+    
+    # 2. Sufficient history (simplified)
+    if token not in price_history or len(price_history[token]) < max(OSCILLATION_PERIOD, LONG_EMA_PERIOD * 2):
+        return False
+    
+    return True
 
-    return False
+def update_stock_pick_history(symbol):
+    """Update the history of picked stocks."""
+    global recently_picked_stocks
+    
+    current_time = datetime.now()
+    
+    if symbol in recently_picked_stocks:
+        recently_picked_stocks[symbol]['count'] += 1
+        recently_picked_stocks[symbol]['last_pick'] = current_time
+    else:
+        recently_picked_stocks[symbol] = {
+            'count': 1,
+            'last_pick': current_time
+        }
+    
+    logger.info(f"📊 Updated pick history for {symbol}: {recently_picked_stocks[symbol]}")
+
+def get_stock_volume_data(token):
+    """Get volume data for a stock if available."""
+    try:
+        # This would need to be implemented based on broker API capabilities
+        # For now, return a default value
+        return 1000000  # Default volume
+    except Exception as e:
+        logger.warning(f"Could not fetch volume data for token {token}: {e}")
+        return 1000000  # Default volume
 
 def calculate_quantity(price):
-    """Calculates quantity based on target profit and price."""
+    """Calculate quantity to use full capital (₹80,000) for maximum position size."""
     if price <= 0:
         return 0
     
-    # Use full capital to determine max affordable quantity
-    quantity = int(CAPITAL // price)
-    quantity = max(1, quantity)
+    # Use full capital to determine quantity (exact calculation as per user)
+    target_quantity = int(CAPITAL / price)
     
-    return quantity
+    # Minimum 1 share
+    target_quantity = max(1, target_quantity)
+    
+    # Calculate actual order value
+    actual_order_value = target_quantity * price
+    
+    logger.info(f"💰 Quantity calculation for ₹{price:.2f}:")
+    logger.info(f"   Target Capital: ₹{CAPITAL:,}")
+    logger.info(f"   Calculated Quantity: {target_quantity} (₹{CAPITAL:,} ÷ ₹{price:.2f})")
+    logger.info(f"   Actual Order Value: ₹{actual_order_value:,.2f}")
+    logger.info(f"   Capital Utilization: {(actual_order_value/CAPITAL)*100:.1f}%")
+    logger.info(f"   Remaining Capital: ₹{CAPITAL - actual_order_value:,.2f}")
+    
+    return target_quantity
 
 def on_ticks(tick_data):
-    """Process incoming ticks and update price history"""
+    """Process incoming ticks and update price history with movement tracking"""
     try:
         if isinstance(tick_data, dict):
             if broker == 'F':
@@ -330,7 +513,13 @@ def on_ticks(tick_data):
                 price = float(tick_data.get('lp', 0))
             
             if token in price_history:
+                # Update price history
                 price_history[token].append(price)
+                
+                # Track price movements for oscillation detection
+                current_time = datetime.now()
+                track_price_movements(token, price, current_time)
+                
     except Exception as e:
         logger.error(f"Error processing tick: {e}")
 
@@ -358,102 +547,122 @@ def on_error(error):
     """WebSocket error callback"""
     logger.error(f"WebSocket Error: {error}")
 
-def find_oscillation_opportunities():
-    """Identify stocks with optimal oscillation patterns"""
-    opportunities = []
-    
-    for token in price_history:
-        prices = list(price_history.get(token, []))
-        if len(prices) < HISTORY_WINDOW:
-            # Fetch historical if needed
-            hist_prices = get_price_history(token)
-            if hist_prices:
-                price_history[token].extend(hist_prices[-HISTORY_WINDOW:])
-            prices = list(price_history[token])
-            if len(prices) < HISTORY_WINDOW:
-                continue
-        
-        score = calculate_oscillation_score(prices)
-        if score > 0 and is_volatile_and_oscillating(prices):
-            idx = token_to_index.get(token)
-            if idx is not None:
-                symbol = df.at[idx, 'tradingsymbol']
-                current_price = prices[-1]
-                if MIN_PRICE <= current_price <= MAX_PRICE:
-                    opportunities.append({
-                        'symbol': symbol,
-                        'token': token,
-                        'current_price': current_price,
-                        'score': score,
-                        'prices': prices
-                    })
-    
-    # Sort by oscillation score descending
-    opportunities.sort(key=lambda x: x['score'], reverse=True)
-    return opportunities
+# Removed complex opportunity detection - using direct scanning instead
 
-def determine_trade_parameters(opportunity):
-    """Calculate trade parameters for an oscillation opportunity"""
-    prices = opportunity['prices']
-    price = opportunity['current_price']
-    trend = determine_trend(prices)
-    direction = None
-    target = None
-
-    if trend == 'positive' and find_entry_point_long(prices):
-        direction = 'BUY'
-    elif trend == 'negative' and find_entry_point_short(prices):
-        direction = 'SELL'
-    elif trend == 'neutral' and find_entry_point_long(prices):
-        direction = 'BUY'
-
-    if direction is None:
-        return None
-
-    quantity = calculate_quantity(price)
-    if quantity == 0:
-        return None
-
-    return {
-        'symbol': opportunity['symbol'],
-        'token': opportunity['token'],
-        'direction': direction,
-        'price': price,
-        'quantity': quantity,
-        'score': opportunity['score']
-    }
+# Removed determine_trade_parameters - creating trade parameters directly in stock picker
 
 def stock_picker():
-    """Continuously scan for oscillation-based opportunities"""
+    """Direct stock scanning to match Kite version performance."""
     global active_position
     
     while processing_data:
         try:
-            with position_lock:
-                if active_position:
-                    time.sleep(1)
-                    continue
-            
-            # Find best oscillation opportunities
-            opportunities = find_oscillation_opportunities()
-            if not opportunities:
-                time.sleep(1)
+            if not is_ready_for_new_trades():
+                time.sleep(0.5)
                 continue
             
-            # Check top opportunities for entry
-            for opp in opportunities:
-                trade_params = determine_trade_parameters(opp)
-                if trade_params:
-                    logger.info(f"Found oscillation opportunity: {trade_params['symbol']} | Score: {trade_params['score']:.4f}")
-                    trade_signal_queue.put(trade_params)
-                    time.sleep(5)
-                    break
-            else:
-                time.sleep(1)
+            # Direct scanning like Kite version - check all stocks with price data
+            for token in price_history:
+                prices = list(price_history.get(token, []))
+                if len(prices) < max(OSCILLATION_PERIOD, LONG_EMA_PERIOD * 2):
+                    continue
                 
+                # Get symbol info
+                idx = token_to_index.get(token)
+                if idx is None:
+                    continue
+                    
+                symbol = df.at[idx, 'tradingsymbol']
+                current_price = prices[-1]
+                
+                # Basic eligibility check
+                if not is_stock_eligible_for_pick(symbol, token, current_price):
+                    continue
+                
+                # Check if already in pending trades
+                if any(trade.get('symbol') == symbol for trade in pending_trades.values()):
+                    continue
+                
+                try:
+                    # Direct analysis like Kite version
+                    trend = determine_trend(prices)
+                    is_oscillating = is_volatile_and_oscillating(prices)
+                    
+                    if trend == 'positive' and is_oscillating and find_entry_point_long(prices):
+                        logger.info(f"💡 Found LONG opportunity in {symbol} (LTP: {current_price}, Trend: {trend})")
+                        trade_params = {
+                            'symbol': symbol,
+                            'token': token,
+                            'direction': 'BUY',
+                            'price': current_price,
+                            'quantity': calculate_quantity(current_price),
+                            'score': calculate_oscillation_score(prices)
+                        }
+                        trade_signal_queue.put(trade_params)
+                        logger.info(f"📥 Trade signal queued for {symbol}")
+                        break  # Only one trade at a time
+                        
+                    elif trend == 'negative' and is_oscillating and find_entry_point_short(prices):
+                        logger.info(f"💡 Found SHORT opportunity in {symbol} (LTP: {current_price}, Trend: {trend})")
+                        trade_params = {
+                            'symbol': symbol,
+                            'token': token,
+                            'direction': 'SELL',
+                            'price': current_price,
+                            'quantity': calculate_quantity(current_price),
+                            'score': calculate_oscillation_score(prices)
+                        }
+                        trade_signal_queue.put(trade_params)
+                        logger.info(f"📥 Trade signal queued for {symbol}")
+                        break  # Only one trade at a time
+                        
+                    elif trend == 'neutral' and is_oscillating and find_entry_point_long(prices):
+                        logger.info(f"💡 Found NEUTRAL (LONG) opportunity in {symbol} (LTP: {current_price}, Trend: {trend})")
+                        trade_params = {
+                            'symbol': symbol,
+                            'token': token,
+                            'direction': 'BUY',
+                            'price': current_price,
+                            'quantity': calculate_quantity(current_price),
+                            'score': calculate_oscillation_score(prices)
+                        }
+                        trade_signal_queue.put(trade_params)
+                        logger.info(f"📥 Trade signal queued for {symbol}")
+                        break  # Only one trade at a time
+                        
+                except Exception as e:
+                    logger.error(f"Error evaluating {symbol}: {str(e)}")
+                    continue
+            
+            time.sleep(1)  # Match Kite version timing
+            
         except Exception as e:
             logger.error(f"Error in stock picker: {e}")
-            time.sleep(5)
+            time.sleep(1.0)
+
+def is_ready_for_new_trades():
+    """Check if the system is ready to accept new trades."""
+    global active_position
+    
+    try:
+        # Check if we have an active position
+        with position_lock:
+            if active_position:
+                return False
+        
+        # Check if there are any pending trades
+        if pending_trades:
+            return False
+        
+        # Verify no open positions
+        if not verify_no_open_positions():
+            return False
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error checking trade readiness: {e}")
+        return False  # Assume not ready on error
 
 def get_order_details(order_id):
     """Fetch details of a specific order from order book."""
@@ -539,6 +748,77 @@ def get_open_position_qty_for_symbol(symbol):
             continue
     return 0
 
+def verify_no_open_positions():
+    """Verify that there are no open positions before starting new trades."""
+    try:
+        positions_data = api.get_positions()
+        if not positions_data:
+            return True
+            
+        iterable_positions = []
+        if isinstance(positions_data, list):
+            iterable_positions = positions_data
+        elif isinstance(positions_data, dict):
+            if positions_data.get('data') is not None:
+                iterable_positions = positions_data.get('data', [])
+            elif positions_data.get('net') is not None:
+                iterable_positions = positions_data.get('net', [])
+
+        for pos in iterable_positions:
+            try:
+                qty_raw = pos.get('netqty', pos.get('qty', 0))
+                qty_val = int(qty_raw) if str(qty_raw).strip() != '' else 0
+                if qty_val != 0:
+                    symbol = pos.get('tsym') or pos.get('tradingsymbol') or pos.get('symbol')
+                    logger.warning(f"⚠️  Found open position: {symbol} with quantity {qty_val}")
+                    return False
+            except Exception:
+                continue
+        return True
+    except Exception as e:
+        logger.warning(f"Could not verify positions: {e}")
+        return True  # Assume safe to proceed
+
+def cleanup_stale_trades():
+    """Clean up any stale pending trades and reset position state."""
+    global active_position, pending_trades
+    
+    try:
+        # Check if we have any pending trades that should be cleaned up
+        if pending_trades:
+            logger.info(f"🧹 Cleaning up {len(pending_trades)} pending trades...")
+            
+            for order_id, trade_info in list(pending_trades.items()):
+                try:
+                    # Check if order still exists and is not completed
+                    order_details = get_order_details(order_id)
+                    if order_details:
+                        status = order_details.get('status', 'UNKNOWN')
+                        if status in ['COMPLETE', 'CANCELLED', 'REJECTED']:
+                            logger.info(f"🗑️  Removing completed/cancelled order {order_id} from pending trades")
+                            del pending_trades[order_id]
+                        else:
+                            logger.info(f"⏳ Order {order_id} still pending with status: {status}")
+                    else:
+                        logger.warning(f"⚠️  Could not fetch details for order {order_id}, removing from pending")
+                        del pending_trades[order_id]
+                except Exception as e:
+                    logger.error(f"Error checking order {order_id}: {e}")
+                    del pending_trades[order_id]
+        
+        # Reset position state if no pending trades
+        if not pending_trades:
+            with position_lock:
+                active_position = False
+            logger.info("✅ Position state reset - ready for new opportunities")
+            
+    except Exception as e:
+        logger.error(f"Error in cleanup_stale_trades: {e}")
+        # Force reset on error
+        with position_lock:
+            active_position = False
+        pending_trades.clear()
+
 def position_manager():
     """Manage trade execution and monitoring"""
     global active_position, pending_trades
@@ -550,6 +830,12 @@ def position_manager():
         try:
             # Check for new signals if no active position
             if not active_position and not trade_signal_queue.empty():
+                # Verify no open positions before starting new trade
+                if not verify_no_open_positions():
+                    logger.warning("⚠️  Found open positions. Waiting for closure before new trades...")
+                    time.sleep(5)
+                    continue
+                
                 # Take the next signal and immediately mark active to avoid duplicate placements
                 current_trade = trade_signal_queue.get()
                 with position_lock:
@@ -559,7 +845,7 @@ def position_manager():
                         continue
                     active_position = True
 
-                logger.info(f"Executing trade signal for {current_trade['symbol']} | Dir: {current_trade['direction']} | Qty: {current_trade['quantity']}")
+                logger.info(f"🚀 Executing trade signal for {current_trade['symbol']} | Dir: {current_trade['direction']} | Qty: {current_trade['quantity']}")
 
                 # Compute BO legs: TP and SL per-share derived from total rupee goals
                 ltp = None
@@ -568,25 +854,35 @@ def position_manager():
                 entry_ref_price = float(ltp if ltp is not None else current_trade['price'])
                 qty_int = max(1, int(current_trade['quantity']))
 
-                # Per-share rupee goals
-                tp_per_share = float(TARGET_PROFIT_PER_TRADE) / qty_int
-                risk_per_share = float(MAX_LOSS_PER_TRADE) / qty_int
+                # Calculate per-share targets based on total profit/loss goals
+                # Total profit target: ₹180, Total loss limit: ₹150
+                tp_per_share = TARGET_PROFIT_PER_TRADE / qty_int
+                sl_per_share = MAX_LOSS_PER_TRADE / qty_int
 
-                # Derive target and stop from entry
+                # Derive target and stop from entry (exact calculation as per user)
                 if current_trade['direction'] == 'BUY':
                     bo_target = entry_ref_price + tp_per_share
-                    stop_trigger = max(0.0, entry_ref_price - risk_per_share)
+                    stop_trigger = max(0.0, entry_ref_price - sl_per_share)
                 else:
                     bo_target = entry_ref_price - tp_per_share
-                    stop_trigger = entry_ref_price + risk_per_share
+                    stop_trigger = entry_ref_price + sl_per_share
 
                 # Round to tick size (0.10)
                 bo_target = round_to_tick(bo_target)
                 stop_trigger = round_to_tick(stop_trigger)
 
                 logger.info(
-                    f"Entry ~ {entry_ref_price:.2f} | TP {bo_target:.2f} | SL {stop_trigger:.2f} | Qty {qty_int}"
+                    f"📊 Trade Setup for {current_trade['symbol']}:"
                 )
+                logger.info(f"   Entry Price: ₹{entry_ref_price:.2f}")
+                logger.info(f"   Quantity: {qty_int}")
+                logger.info(f"   Order Value: ₹{qty_int * entry_ref_price:,.2f}")
+                logger.info(f"   Take Profit: ₹{bo_target:.2f} (₹{tp_per_share:.2f} per share)")
+                logger.info(f"   Stop Loss: ₹{stop_trigger:.2f} (₹{sl_per_share:.2f} per share)")
+                logger.info(f"   Total Profit Target: ₹{TARGET_PROFIT_PER_TRADE}")
+                logger.info(f"   Total Loss Limit: ₹{MAX_LOSS_PER_TRADE}")
+                logger.info(f"   Calculation: TP = {entry_ref_price:.2f} + (₹{TARGET_PROFIT_PER_TRADE} ÷ {qty_int}) = ₹{bo_target:.2f}")
+                logger.info(f"   Calculation: SL = {entry_ref_price:.2f} - (₹{MAX_LOSS_PER_TRADE} ÷ {qty_int}) = ₹{stop_trigger:.2f}")
 
                 # Place Market Order for immediate execution
                 logger.info(f"📤 Placing Market Order for {current_trade['symbol']}...")
@@ -696,11 +992,14 @@ def position_manager():
                     net_qty_now = get_open_position_qty_for_symbol(current_trade['symbol'])
                     
                     if net_qty_now == 0:
-                        logger.info(f"Position closed for {current_trade['symbol']} (likely by SL/TP orders)")
+                        logger.info(f"✅ Position closed for {current_trade['symbol']} (likely by SL/TP orders)")
+                        # Clean up and reset for new opportunity
                         del pending_trades[order_id]
                         current_trade = None
-                        active_position = False
+                        with position_lock:
+                            active_position = False
                         entry_time = None
+                        logger.info(f"🔄 Ready to scan for new opportunities...")
                         continue
                     
                     # If SL/TP orders failed, use manual monitoring
@@ -714,9 +1013,14 @@ def position_manager():
                             current_trade['exit_attempted'] = True
                             exit_side = 'SELL' if dir_buy else 'BUY'
                             exit_reason = 'TP' if hit_tp else 'SL'
+                            
+                            # NEW: Record target hit to prevent immediate re-entry
+                            target_price = current_trade['bookprofit_price'] if hit_tp else current_trade['bookloss_price']
+                            record_target_hit(current_trade['token'], target_price, exit_reason)
+                            
                             # Use actual filled quantity for exit
                             actual_qty = current_trade.get('actual_quantity', qty_int)
-                            logger.info(f"{exit_reason} hit for {current_trade['symbol']} at {current_price:.2f}. Exiting {exit_side} {actual_qty}.")
+                            logger.info(f"🎯 {exit_reason} hit for {current_trade['symbol']} at {current_price:.2f}. Exiting {exit_side} {actual_qty}.")
                             
                             force_exit_result = place_order(
                                 symbol=current_trade['symbol'],
@@ -727,17 +1031,20 @@ def position_manager():
                             )
                             
                             if force_exit_result and isinstance(force_exit_result, dict) and force_exit_result.get('stat') == 'Ok':
-                                logger.info(f"Exit placed for {current_trade['symbol']} due to {exit_reason}.")
+                                logger.info(f"✅ Exit placed for {current_trade['symbol']} due to {exit_reason}.")
                             else:
-                                logger.warning(f"Exit placement failed for {current_trade['symbol']} due to {exit_reason}: {force_exit_result}")
+                                logger.warning(f"❌ Exit placement failed for {current_trade['symbol']} due to {exit_reason}: {force_exit_result}")
                         
                         # If flat after manual exit, clean up
                         if net_qty_now == 0:
-                            logger.info(f"Position flat for {current_trade['symbol']} (manual exit)")
+                            logger.info(f"✅ Position flat for {current_trade['symbol']} (manual exit)")
+                            # Clean up and reset for new opportunity
                             del pending_trades[order_id]
                             current_trade = None
-                            active_position = False
+                            with position_lock:
+                                active_position = False
                             entry_time = None
+                            logger.info(f"🔄 Ready to scan for new opportunities...")
                             continue
 
                 # Check timeout (only if auto-close is enabled)
@@ -799,8 +1106,10 @@ def position_manager():
                     
                     del pending_trades[order_id]
                     current_trade = None
-                    active_position = False
+                    with position_lock:
+                        active_position = False
                     entry_time = None
+                    logger.info(f"🔄 Ready to scan for new opportunities after timeout exit...")
             
             time.sleep(1)
             
@@ -1029,17 +1338,628 @@ def check_broker_capabilities():
         logger.info("   ✅ Separate stop-loss and take-profit orders after position establishment")
         logger.info("   ✅ Automatic partial fill handling with additional market orders")
         logger.info("   ✅ No missed opportunities due to limit order rejections")
+        logger.info("   ✅ Position state management to prevent duplicate trades")
+        logger.info("   ✅ Automatic cleanup of stale trades and positions")
         
     except Exception as e:
         logger.error(f"Error checking broker capabilities: {e}")
 
-def main():
-    """Main function to start all components"""
+def log_system_state():
+    """Log the current system state for debugging."""
+    global active_position, pending_trades
+    
     try:
-        global processing_data
+        logger.info("📊 Current System State:")
+        logger.info(f"   Active Position: {active_position}")
+        logger.info(f"   Pending Trades: {len(pending_trades)}")
+        logger.info(f"   Trade Signal Queue Size: {trade_signal_queue.qsize()}")
+        
+        if pending_trades:
+            logger.info("   Pending Trade Details:")
+            for order_id, trade_info in pending_trades.items():
+                symbol = trade_info.get('symbol', 'N/A')
+                status = 'Initial' if not trade_info.get('initial_completed', False) else 'Active'
+                logger.info(f"     Order {order_id}: {symbol} - {status}")
+        
+        # Check actual positions
+        if verify_no_open_positions():
+            logger.info("   ✅ No open positions detected")
+        else:
+            logger.info("   ⚠️  Open positions detected - scanning for closure")
+            
+    except Exception as e:
+        logger.error(f"Error logging system state: {e}")
+
+def reset_pick_history():
+    """Reset pick history for new trading session."""
+    global recently_picked_stocks, session_start_time
+    
+    current_time = datetime.now()
+    
+    # Reset if more than 2 hours have passed
+    if (current_time - session_start_time).total_seconds() > 7200:
+        logger.info("🔄 Resetting pick history for new trading session")
+        recently_picked_stocks.clear()
+        session_start_time = current_time
+        return True
+    
+    # Reset if no stocks have been picked in the last hour
+    if recently_picked_stocks:
+        oldest_pick = min(recently_picked_stocks.values(), key=lambda x: x['last_pick'])
+        if (current_time - oldest_pick['last_pick']).total_seconds() > 3600:
+            logger.info("🔄 Resetting pick history due to inactivity")
+            recently_picked_stocks.clear()
+            session_start_time = current_time
+            return True
+    
+    return False
+
+def log_oscillation_market_summary():
+    """Log comprehensive summary of oscillation patterns across all stocks."""
+    try:
+        logger.info("📊 Oscillation Market Summary:")
+        
+        total_stocks = len(price_history)
+        stocks_with_cycles = 0
+        stocks_with_sufficient_cycles = 0
+        stocks_with_target_hits = 0
+        total_cycles = 0
+        avg_cycle_score = 0.0
+        
+        cycle_scores = []
+        pattern_qualities = {'Poor': 0, 'Fair': 0, 'Good': 0, 'Excellent': 0}
+        
+        for token in price_history:
+            if token in price_movements:
+                movement_data = price_movements[token]
+                cycles = movement_data['cycles']
+                
+                if cycles:
+                    stocks_with_cycles += 1
+                    total_cycles += len(cycles)
+                    
+                    # Check if sufficient cycles for trading
+                    if has_sufficient_oscillation_cycles(token):
+                        stocks_with_sufficient_cycles += 1
+                    
+                    # Get cycle score
+                    cycle_score = get_oscillation_cycle_score(token)
+                    if cycle_score > 0:
+                        cycle_scores.append(cycle_score)
+                    
+                    # Get pattern quality
+                    pattern_analysis = analyze_oscillation_patterns(token)
+                    if pattern_analysis:
+                        quality = pattern_analysis['pattern_quality']
+                        pattern_qualities[quality] += 1
+            
+            # Check target hits
+            if token in target_hit_history:
+                stocks_with_target_hits += 1
+        
+        # Calculate averages
+        if cycle_scores:
+            avg_cycle_score = np.mean(cycle_scores)
+        
+        logger.info(f"   Total Stocks Monitored: {total_stocks}")
+        logger.info(f"   Stocks with Cycles: {stocks_with_cycles}")
+        logger.info(f"   Stocks with Sufficient Cycles: {stocks_with_sufficient_cycles}")
+        logger.info(f"   Total Cycles Detected: {total_cycles}")
+        logger.info(f"   Average Cycle Score: {avg_cycle_score:.4f}")
+        logger.info(f"   Stocks with Target Hits: {stocks_with_target_hits}")
+        
+        logger.info(f"   Pattern Quality Distribution:")
+        for quality, count in pattern_qualities.items():
+            percentage = (count / max(1, stocks_with_cycles)) * 100
+            logger.info(f"     {quality}: {count} ({percentage:.1f}%)")
+        
+        # Show top oscillating stocks
+        top_oscillators = []
+        for token in price_history:
+            if token in price_movements:
+                cycle_score = get_oscillation_cycle_score(token)
+                if cycle_score > 0.2:  # Only show good oscillators
+                    idx = token_to_index.get(token)
+                    if idx is not None:
+                        symbol = df.at[idx, 'tradingsymbol']
+                        top_oscillators.append((symbol, cycle_score))
+        
+        if top_oscillators:
+            top_oscillators.sort(key=lambda x: x[1], reverse=True)
+            logger.info(f"   Top Oscillating Stocks (Score > 0.2):")
+            for i, (symbol, score) in enumerate(top_oscillators[:10]):
+                logger.info(f"     {i+1}. {symbol}: {score:.4f}")
+        
+        # Show recent target hits
+        recent_targets = []
+        current_time = datetime.now()
+        for token, hit_data in target_hit_history.items():
+            time_since = (current_time - hit_data['last_target_hit']).total_seconds() / 60
+            if time_since <= 60:  # Last hour
+                idx = token_to_index.get(token)
+                if idx is not None:
+                    symbol = df.at[idx, 'tradingsymbol']
+                    recent_targets.append((symbol, hit_data['hit_type'], hit_data['target_price'], time_since))
+        
+        if recent_targets:
+            recent_targets.sort(key=lambda x: x[3])  # Sort by time
+            logger.info(f"   Recent Target Hits (Last Hour):")
+            for symbol, hit_type, price, time_since in recent_targets[:5]:
+                logger.info(f"     {symbol}: {hit_type} at ₹{price:.2f} ({time_since:.1f} min ago)")
+        
+    except Exception as e:
+        logger.error(f"Error in oscillation market summary: {e}")
+
+def log_oscillation_analysis():
+    """Log detailed analysis of current oscillation patterns."""
+    try:
+        logger.info("📊 Oscillation Analysis Summary:")
+        
+        total_stocks = len(price_history)
+        stocks_with_data = sum(1 for prices in price_history.values() if len(prices) >= HISTORY_WINDOW)
+        eligible_stocks = 0
+        high_score_stocks = 0
+        
+        for token in price_history:
+            prices = list(price_history.get(token, []))
+            if len(prices) >= HISTORY_WINDOW:
+                eligible_stocks += 1
+                score = calculate_oscillation_score(prices)
+                if score >= MIN_OSCILLATION_SCORE:
+                    high_score_stocks += 1
+        
+        logger.info(f"   Total Stocks Monitored: {total_stocks}")
+        logger.info(f"   Stocks with Sufficient Data: {stocks_with_data}")
+        logger.info(f"   Eligible for Analysis: {eligible_stocks}")
+        logger.info(f"   High Score Candidates: {high_score_stocks}")
+        logger.info(f"   Recently Picked Stocks: {len(recently_picked_stocks)}")
+        
+        if recently_picked_stocks:
+            logger.info("   Recent Pick Details:")
+            for symbol, data in list(recently_picked_stocks.items())[:5]:
+                time_since_pick = (datetime.now() - data['last_pick']).total_seconds() / 60
+                logger.info(f"     {symbol}: {data['count']} picks, {time_since_pick:.1f} min ago")
+        
+        # Add oscillation market summary
+        log_oscillation_market_summary()
+        
+    except Exception as e:
+        logger.error(f"Error in oscillation analysis logging: {e}")
+
+def debug_stock_analysis(symbol, token, prices):
+    """Comprehensive debugging function to analyze why a stock was selected or rejected."""
+    try:
+        if len(prices) < OSCILLATION_PERIOD:
+            logger.info(f"🔍 {symbol}: Insufficient price data ({len(prices)} < {OSCILLATION_PERIOD})")
+            return
+        
+        current_price = prices[-1]
+        recent_prices = np.array(prices[-OSCILLATION_PERIOD:])
+        avg_price = np.mean(recent_prices)
+        
+        logger.info(f"🔍 Detailed Analysis for {symbol}:")
+        logger.info(f"   Current Price: ₹{current_price:.2f}")
+        logger.info(f"   Average Price: ₹{avg_price:.2f}")
+        logger.info(f"   Price Range: ₹{np.min(recent_prices):.2f} - ₹{np.max(recent_prices):.2f}")
+        
+        # 1. Eligibility Check
+        eligible = is_stock_eligible_for_pick(symbol, token, current_price)
+        logger.info(f"   Eligibility: {'✅' if eligible else '❌'}")
+        
+        if not eligible:
+            if symbol in recently_picked_stocks:
+                pick_data = recently_picked_stocks[symbol]
+                time_since = (datetime.now() - pick_data['last_pick']).total_seconds() / 60
+                logger.info(f"     Reason: Recently picked {pick_data['count']} times, {time_since:.1f} min ago")
+            return
+        
+        # 2. Oscillation Score Components
+        score = calculate_oscillation_score(prices)
+        logger.info(f"   Oscillation Score: {score:.4f}")
+        
+        if score < MIN_OSCILLATION_SCORE:
+            logger.info(f"     ❌ Below minimum threshold ({MIN_OSCILLATION_SCORE})")
+            return
+        
+        # 3. Volatility Analysis
+        price_range = np.max(recent_prices) - np.min(recent_prices)
+        volatility = price_range / avg_price
+        logger.info(f"   Volatility: {volatility:.4f} ({'✅' if VOLATILITY_THRESHOLD <= volatility <= 0.05 else '❌'})")
+        
+        # 4. Trend Analysis
+        trend_strength = abs(recent_prices[-1] - recent_prices[0]) / avg_price
+        logger.info(f"   Trend Strength: {trend_strength:.4f} ({'✅' if trend_strength <= MAX_TREND_STRENGTH else '❌'})")
+        
+        # 5. Direction Changes
+        min_change = avg_price * PRICE_CHANGE_THRESHOLD
+        direction_changes = 0
+        for i in range(2, len(recent_prices)):
+            change1 = recent_prices[i-1] - recent_prices[i-2]
+            change2 = recent_prices[i] - recent_prices[i-1]
+            if abs(change1) > min_change and abs(change2) > min_change:
+                if (change1 > 0 and change2 < 0) or (change1 < 0 and change2 > 0):
+                    direction_changes += 1
+        
+        logger.info(f"   Direction Changes: {direction_changes} ({'✅' if direction_changes >= 2 else '❌'})")
+        
+        # 6. Entry Point Analysis
+        long_entry = find_entry_point_long(prices)
+        short_entry = find_entry_point_short(prices)
+        logger.info(f"   Long Entry: {'✅' if long_entry else '❌'}")
+        logger.info(f"   Short Entry: {'✅' if short_entry else '❌'}")
+        
+        # 7. Final Recommendation
+        if long_entry or short_entry:
+            direction = 'BUY' if long_entry else 'SELL'
+            logger.info(f"   🎯 RECOMMENDATION: {direction} {symbol}")
+            logger.info(f"   📊 Composite Score: {score:.4f}")
+        else:
+            logger.info(f"   ⏸️  No entry point found for {symbol}")
+        
+    except Exception as e:
+        logger.error(f"Error in stock analysis for {symbol}: {e}")
+
+def analyze_market_conditions():
+    """Analyze overall market conditions and adjust parameters if needed."""
+    try:
+        logger.info("🌍 Market Conditions Analysis:")
+        
+        # Calculate average volatility across all stocks
+        volatilities = []
+        scores = []
+        
+        for token in price_history:
+            prices = list(price_history.get(token, []))
+            if len(prices) >= HISTORY_WINDOW:
+                recent_prices = prices[-10:]
+                if len(recent_prices) >= 5:
+                    vol = np.std(recent_prices) / np.mean(recent_prices)
+                    volatilities.append(vol)
+                    
+                    score = calculate_oscillation_score(prices)
+                    if score > 0:
+                        scores.append(score)
+        
+        if volatilities:
+            avg_volatility = np.mean(volatilities)
+            logger.info(f"   Average Market Volatility: {avg_volatility:.4f}")
+            
+            # Adjust thresholds based on market conditions
+            if avg_volatility < 0.001:  # Low volatility market
+                logger.info("   📉 Low volatility market detected - consider lowering thresholds")
+            elif avg_volatility > 0.005:  # High volatility market
+                logger.info("   📈 High volatility market detected - consider raising thresholds")
+        
+        if scores:
+            avg_score = np.mean(scores)
+            logger.info(f"   Average Oscillation Score: {avg_score:.4f}")
+            
+            # Adjust minimum score threshold
+            if avg_score < MIN_OSCILLATION_SCORE:
+                logger.info(f"   ⚠️  Market conditions poor - few high-quality opportunities")
+            elif avg_score > 0.3:
+                logger.info(f"   ✅ Excellent market conditions - many opportunities available")
+        
+        # Count opportunities by score ranges
+        score_ranges = {'0.15-0.25': 0, '0.25-0.35': 0, '0.35+': 0}
+        for token in price_history:
+            prices = list(price_history.get(token, []))
+            if len(prices) >= HISTORY_WINDOW:
+                score = calculate_oscillation_score(prices)
+                if 0.15 <= score < 0.25:
+                    score_ranges['0.15-0.25'] += 1
+                elif 0.25 <= score < 0.35:
+                    score_ranges['0.25-0.35'] += 1
+                elif score >= 0.35:
+                    score_ranges['0.35+'] += 1
+        
+        logger.info(f"   Score Distribution:")
+        for range_name, count in score_ranges.items():
+            logger.info(f"     {range_name}: {count} stocks")
+        
+    except Exception as e:
+        logger.error(f"Error in market conditions analysis: {e}")
+
+def enable_debug_mode():
+    """Enable debug mode for detailed analysis."""
+    global args
+    
+    if args.debug:
+        logger.info("🔍 Debug mode enabled - detailed stock analysis available")
+        logger.info("   Use debug_stock_analysis() function to analyze specific stocks")
+        logger.info("   Example: debug_stock_analysis('RELIANCE', '12345', price_history['12345'])")
+        
+        # Add debug info to main logging
+        logger.info("   Enhanced logging and analysis features active")
+        logger.info("   Market conditions analysis will run every 10 minutes")
+        logger.info("   Detailed oscillation analysis will run every 5 minutes")
+        
+        return True
+    return False
+
+def debug_top_opportunities():
+    """Debug analyze top oscillation opportunities with cycle analysis."""
+    if not args.debug:
+        return
+    
+    try:
+        opportunities = find_oscillation_opportunities()
+        if not opportunities:
+            logger.info("🔍 Debug: No opportunities found for analysis")
+            return
+        
+        logger.info(f"🔍 Debug: Analyzing top {min(3, len(opportunities))} opportunities:")
+        
+        for i, opp in enumerate(opportunities[:3]):
+            logger.info(f"\n--- Analysis {i+1}: {opp['symbol']} ---")
+            debug_stock_analysis(opp['symbol'], opp['token'], opp['prices'])
+            
+            # Add cycle analysis
+            logger.info(f"\n--- Cycle Analysis for {opp['symbol']} ---")
+            debug_oscillation_cycles(opp['token'], opp['symbol'])
+            
+    except Exception as e:
+        logger.error(f"Error in debug analysis: {e}")
+
+def track_price_movements(token, current_price, timestamp):
+    """Track price movements and detect oscillation cycles."""
+    global price_movements
+    
+    if token not in price_movements:
+        price_movements[token] = {
+            'cycles': [],
+            'last_cycle_time': timestamp,
+            'current_direction': None,
+            'start_price': current_price,
+            'peak_price': current_price,
+            'trough_price': current_price,
+            'last_price': current_price
+        }
+        return
+    
+    movement_data = price_movements[token]
+    last_price = movement_data['last_price']
+    price_change = (current_price - last_price) / last_price
+    
+    # Only track significant movements
+    if abs(price_change) < PRICE_MOVEMENT_THRESHOLD:
+        movement_data['last_price'] = current_price
+        return
+    
+    current_direction = 'up' if price_change > 0 else 'down'
+    
+    # Detect direction change
+    if movement_data['current_direction'] and movement_data['current_direction'] != current_direction:
+        # Direction changed - potential cycle completion
+        if movement_data['current_direction'] == 'up':
+            # Up cycle completed, record peak
+            movement_data['peak_price'] = max(movement_data['peak_price'], last_price)
+        else:
+            # Down cycle completed, record trough
+            movement_data['trough_price'] = min(movement_data['trough_price'], last_price)
+        
+        # Check if this constitutes a valid cycle
+        cycle_range = abs(movement_data['peak_price'] - movement_data['trough_price'])
+        cycle_percentage = cycle_range / movement_data['start_price']
+        
+        if cycle_percentage >= PRICE_MOVEMENT_THRESHOLD:
+            # Valid cycle detected
+            cycle = {
+                'start_time': movement_data['last_cycle_time'],
+                'end_time': timestamp,
+                'start_price': movement_data['start_price'],
+                'peak_price': movement_data['peak_price'],
+                'trough_price': movement_data['trough_price'],
+                'range': cycle_range,
+                'percentage': cycle_percentage,
+                'direction': movement_data['current_direction']
+            }
+            
+            movement_data['cycles'].append(cycle)
+            
+            # Keep only recent cycles
+            if len(movement_data['cycles']) > MAX_CYCLES_TO_TRACK:
+                movement_data['cycles'].pop(0)
+            
+            # Reset for next cycle
+            movement_data['start_price'] = current_price
+            movement_data['peak_price'] = current_price
+            movement_data['trough_price'] = current_price
+            movement_data['last_cycle_time'] = timestamp
+            
+            logger.debug(f"🔄 Cycle detected for token {token}: {cycle['percentage']:.4f} range")
+    
+    # Update current state
+    movement_data['current_direction'] = current_direction
+    movement_data['last_price'] = current_price
+
+# Removed complex cycle analysis functions - using simplified approach
+
+# Removed complex cycle scoring - using simplified approach
+
+def check_target_hit_eligibility(token, current_price):
+    """Simplified eligibility check - always allow for better performance."""
+    return True
+
+def record_target_hit(token, target_price, hit_type='TP'):
+    """Record when a target (TP/SL) is hit to prevent immediate re-entry."""
+    global target_hit_history
+    
+    current_time = datetime.now()
+    
+    if token not in target_hit_history:
+        target_hit_history[token] = {
+            'last_target_hit': current_time,
+            'target_price': target_price,
+            'hit_type': hit_type,
+            'hit_count': 1
+        }
+    else:
+        target_hit_history[token].update({
+            'last_target_hit': current_time,
+            'target_price': target_price,
+            'hit_type': hit_type,
+            'hit_count': target_hit_history[token]['hit_count'] + 1
+        })
+    
+    logger.info(f"🎯 Target {hit_type} hit for token {token} at ₹{target_price:.2f}")
+    logger.info(f"   Hit count: {target_hit_history[token]['hit_count']}")
+    logger.info(f"   Waiting period: {MIN_CYCLE_DURATION * 2} seconds before next trade")
+
+def analyze_oscillation_patterns(token):
+    """Analyze oscillation patterns for a specific token."""
+    if token not in price_movements:
+        return None
+    
+    movement_data = price_movements[token]
+    cycles = movement_data['cycles']
+    
+    if not cycles:
+        return None
+    
+    analysis = {
+        'total_cycles': len(cycles),
+        'recent_cycles': 0,
+        'avg_range': 0.0,
+        'consistency': 0.0,
+        'last_cycle_time': None,
+        'pattern_quality': 'Poor'
+    }
+    
+    if cycles:
+        current_time = datetime.now()
+        recent_cycles = [cycle for cycle in cycles 
+                         if (current_time - cycle['end_time']).total_seconds() <= MIN_CYCLE_DURATION * 2]
+        
+        analysis['recent_cycles'] = len(recent_cycles)
+        analysis['last_cycle_time'] = cycles[-1]['end_time']
+        
+        if len(cycles) >= 2:
+            ranges = [cycle['percentage'] for cycle in cycles]
+            analysis['avg_range'] = np.mean(ranges)
+            analysis['consistency'] = 1.0 - min(1.0, np.std(ranges) / np.mean(ranges))
+            
+            # Determine pattern quality
+            if len(recent_cycles) >= MIN_OSCILLATION_CYCLES and analysis['consistency'] > 0.7:
+                analysis['pattern_quality'] = 'Excellent'
+            elif len(recent_cycles) >= MIN_OSCILLATION_CYCLES and analysis['consistency'] > 0.5:
+                analysis['pattern_quality'] = 'Good'
+            elif len(recent_cycles) >= 1:
+                analysis['pattern_quality'] = 'Fair'
+    
+    return analysis
+
+def debug_oscillation_cycles(token, symbol):
+    """Debug analyze oscillation cycles for a specific stock."""
+    if token not in price_movements:
+        logger.info(f"🔍 {symbol}: No price movement data available")
+        return
+    
+    movement_data = price_movements[token]
+    cycles = movement_data['cycles']
+    
+    logger.info(f"🔍 Oscillation Cycle Analysis for {symbol}:")
+    logger.info(f"   Total Cycles Tracked: {len(cycles)}")
+    logger.info(f"   Current Direction: {movement_data['current_direction']}")
+    logger.info(f"   Last Price: ₹{movement_data['last_price']:.2f}")
+    logger.info(f"   Peak Price: ₹{movement_data['peak_price']:.2f}")
+    logger.info(f"   Trough Price: ₹{movement_data['trough_price']:.2f}")
+    
+    if cycles:
+        logger.info(f"   Recent Cycles:")
+        for i, cycle in enumerate(cycles[-5:]):  # Show last 5 cycles
+            duration = (cycle['end_time'] - cycle['start_time']).total_seconds() / 60
+            logger.info(f"     Cycle {i+1}: {cycle['start_price']:.2f} → {cycle['peak_price']:.2f} → {cycle['trough_price']:.2f}")
+            logger.info(f"       Range: {cycle['range']:.2f} ({cycle['percentage']:.4f}) | Duration: {duration:.1f} min")
+        
+        # Calculate statistics
+        ranges = [cycle['percentage'] for cycle in cycles]
+        durations = [(cycle['end_time'] - cycle['start_time']).total_seconds() / 60 for cycle in cycles]
+        
+        logger.info(f"   Statistics:")
+        logger.info(f"     Average Range: {np.mean(ranges):.4f}")
+        logger.info(f"     Range Std Dev: {np.std(ranges):.4f}")
+        logger.info(f"     Average Duration: {np.mean(durations):.1f} min")
+        logger.info(f"     Consistency Score: {1.0 - min(1.0, np.std(ranges) / np.mean(ranges)):.4f}")
+    
+    # Check target hit history
+    if token in target_hit_history:
+        hit_data = target_hit_history[token]
+        time_since_hit = (datetime.now() - hit_data['last_target_hit']).total_seconds() / 60
+        logger.info(f"   Target Hit History:")
+        logger.info(f"     Last {hit_data['hit_type']} hit: {time_since_hit:.1f} min ago at ₹{hit_data['target_price']:.2f}")
+        logger.info(f"     Total hits: {hit_data['hit_count']}")
+        
+        # Check eligibility
+        current_price = movement_data['last_price']
+        eligible = check_target_hit_eligibility(token, current_price)
+        logger.info(f"     Eligible for new trade: {'✅' if eligible else '❌'}")
+    
+    # Check if sufficient cycles for trading
+    sufficient_cycles = has_sufficient_oscillation_cycles(token)
+    logger.info(f"   Sufficient Cycles for Trading: {'✅' if sufficient_cycles else '❌'}")
+    
+    # Get cycle score
+    cycle_score = get_oscillation_cycle_score(token)
+    logger.info(f"   Cycle Score: {cycle_score:.4f}")
+
+def main():
+    """Enhanced main function with better session management and logging."""
+    try:
+        global processing_data, session_start_time
+        
+        # Check if user just wants summary
+        if args.summary:
+            logger.info("📊 Oscillation Market Summary Mode")
+            logger.info("   Loading price data for analysis...")
+            
+            # Initialize basic data structures
+            for token in df['instrument_token']:
+                price_history[str(token)] = deque(maxlen=HISTORY_WINDOW)
+            
+            # Try to load some historical data for analysis
+            logger.info("   Fetching historical data for analysis...")
+            for i, token in enumerate(df['instrument_token'][:50]):  # Sample first 50 stocks
+                try:
+                    hist_prices = get_price_history(str(token), minutes=60)
+                    if hist_prices:
+                        price_history[str(token)].extend(hist_prices)
+                        # Simulate some price movements for demonstration
+                        if len(hist_prices) >= 10:
+                            for j in range(10):
+                                price = hist_prices[-1] + (np.random.random() - 0.5) * hist_prices[-1] * 0.01
+                                track_price_movements(str(token), price, datetime.now() - timedelta(minutes=10-j))
+                except Exception as e:
+                    continue
+                
+                if i % 10 == 0:
+                    logger.info(f"   Processed {i+1}/50 stocks...")
+            
+            logger.info("   Analysis complete. Showing oscillation market summary:")
+            log_oscillation_market_summary()
+            return
+        
+        # Initialize session
+        session_start_time = datetime.now()
+        logger.info(f"🚀 Starting Oscillation Scalper - Session: {session_start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info(f"   Broker: {'FLATTRADE' if broker == 'F' else 'SHOONYA'}")
+        logger.info(f"   Capital: ₹{CAPITAL:,}")
+        logger.info(f"   Target Profit: ₹{TARGET_PROFIT_PER_TRADE}")
+        logger.info(f"   Max Loss: ₹{MAX_LOSS_PER_TRADE}")
+        logger.info(f"   Min Oscillation Score: {MIN_OSCILLATION_SCORE}")
+        logger.info(f"   Max Repeat Picks: {MAX_REPEAT_PICKS}")
+        logger.info(f"   Min Oscillation Cycles: {MIN_OSCILLATION_CYCLES}")
+        logger.info(f"   Min Cycle Duration: {MIN_CYCLE_DURATION} seconds")
+        
+        # Enable debug mode if requested
+        debug_active = enable_debug_mode()
         
         # Check broker capabilities first
         check_broker_capabilities()
+        
+        # Initial cleanup to ensure clean state
+        logger.info("🧹 Performing initial cleanup...")
+        cleanup_stale_trades()
         
         # Start WebSocket
         if broker == 'F':
@@ -1063,13 +1983,55 @@ def main():
         # Start stock picker thread
         picker_thread = Thread(target=stock_picker, daemon=True)
         picker_thread.start()
+        logger.info("✅ Stock picker thread started")
         
         # Start position manager thread
         manager_thread = Thread(target=position_manager, daemon=True)
         manager_thread.start()
+        logger.info("✅ Position manager thread started")
         
-        # Keep main thread alive
+        # Keep main thread alive with periodic cleanup and state logging
+        last_cleanup = time.time()
+        last_state_log = time.time()
+        last_analysis_log = time.time()
+        last_pick_reset = time.time()
+        last_market_analysis = time.time()
+        last_debug_analysis = time.time()
+        
         while processing_data:
+            current_time = time.time()
+            
+            # Periodic cleanup every 5 minutes
+            if current_time - last_cleanup > 300:  # 5 minutes
+                logger.info("🧹 Performing periodic cleanup...")
+                cleanup_stale_trades()
+                last_cleanup = current_time
+            
+            # Periodic system state logging every 2 minutes
+            if current_time - last_state_log > 120:  # 2 minutes
+                log_system_state()
+                last_state_log = current_time
+            
+            # Periodic oscillation analysis every 5 minutes
+            if current_time - last_analysis_log > 300:  # 5 minutes
+                log_oscillation_analysis()
+                last_analysis_log = current_time
+            
+            # Periodic pick history reset every 30 minutes
+            if current_time - last_pick_reset > 1800:  # 30 minutes
+                if reset_pick_history():
+                    last_pick_reset = current_time
+            
+            # Periodic market conditions analysis every 10 minutes
+            if current_time - last_market_analysis > 600:  # 10 minutes
+                analyze_market_conditions()
+                last_market_analysis = current_time
+            
+            # Periodic debug analysis every 15 minutes (only in debug mode)
+            if debug_active and current_time - last_debug_analysis > 900:  # 15 minutes
+                debug_top_opportunities()
+                last_debug_analysis = current_time
+            
             time.sleep(1)
             
     except KeyboardInterrupt:

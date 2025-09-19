@@ -67,7 +67,7 @@ MAX_CONCURRENT_TRADES = args.max_trades
 RISK_MULTIPLIER = args.risk_multiplier
 
 # Enhanced Trading Configuration for HFT
-CAPITAL = 90000
+CAPITAL = 80000
 TARGET_PROFIT_PER_TRADE = 180
 MAX_LOSS_PER_TRADE = 150
 MAX_POSITION_DURATION = 180  # Reduced to 3 minutes for faster turnover

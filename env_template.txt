@@ -1,0 +1,21 @@
+# Nifty 500 Scalping Bot Environment Configuration
+# Copy this file to .env and fill in your broker credentials
+
+# FlatTrade API Credentials
+FLATTRADE_API_KEY=your_flattrade_api_key
+FLATTRADE_SECRET_KEY=your_flattrade_secret_key
+FLATTRADE_USER_ID=your_flattrade_user_id
+FLATTRADE_SESSION=your_flattrade_session_token
+
+# Shoonya API Credentials
+SHOONYA_UID=your_shoonya_user_id
+SHOONYA_PASSWORD=your_shoonya_password
+SHOONYA_TOTP=your_shoonya_totp_secret
+SHOONYA_VENDOR_CODE=your_shoonya_vendor_code
+SHOONYA_API_KEY=your_shoonya_api_key
+SHOONYA_IMEI=your_shoonya_imei
+
+# Trading Configuration (Optional - can be overridden by command line arguments)
+# CAPITAL=100000
+# TARGET_PROFIT=180
+# TARGET_LOSS=180
